@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1780068626333,
+      "tag": "0000_boring_payback",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1780068889932,
+      "tag": "0001_glorious_mysterio",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1780079503471,
+      "tag": "0002_loving_lily_hollister",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1780081650818,
+      "tag": "0003_simple_cloak",
+      "breakpoints": true
+    }
+  ]
+}
