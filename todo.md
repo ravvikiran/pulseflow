@@ -1,5 +1,8 @@
 # PulseFlow - Project TODO
 
+> **For a structured requirements document with fulfillment tracking, see [REQUIREMENTS.md](./REQUIREMENTS.md)**
+> **For user-facing documentation on how to run the app, see [README.md](./README.md)**
+
 ## Phase 1: Foundation & Theme
 - [x] Create todo.md
 - [x] Design dark institutional theme (CSS variables, typography, colors)
