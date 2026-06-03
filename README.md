@@ -28,7 +28,7 @@ PulseFlow is a real-time financial market intelligence platform that provides te
 | API Layer | tRPC 11 (type-safe RPC over Express) |
 | Server | Express 4, Node.js (ESM) |
 | Database | MySQL/TiDB via Drizzle ORM |
-| Auth | Manus OAuth (session cookie-based) |
+| Auth | JWT session cookies |
 | Build | Vite 7 (client), esbuild (server), pnpm |
 | Testing | Vitest |
 
@@ -38,24 +38,34 @@ PulseFlow is a real-time financial market intelligence platform that provides te
 
 ### Prerequisites
 
-- Node.js 20+
-- pnpm 10+
-- MySQL/TiDB database (connection string via `DATABASE_URL` env var)
+- **Node.js 20+** — [Download](https://nodejs.org/)
+- **pnpm** — This project uses pnpm (not npm). Install it globally:
+  ```bash
+  npm install -g pnpm
+  ```
+- **MySQL database** (optional) — Only needed for persistence features (watchlists, alerts, settings). Without it, the app runs fully with simulated in-memory data.
 
-### Install & Run
+### Setup
 
 ```bash
-# Install dependencies
+# 1. Install dependencies (MUST use pnpm, not npm)
 pnpm install
 
-# Push database schema
-pnpm db:push
+# 2. Create environment file (optional — app works without it)
+cp .env.example .env
 
-# Start development server (client + server on same port)
+# 3. (Optional) If you have a MySQL database, update DATABASE_URL in .env
+#    Then push the schema:
+pnpm db:push
+```
+
+### Run in Development
+
+```bash
 pnpm dev
 ```
 
-The app starts at `http://localhost:3000`. If port 3000 is busy, it auto-finds the next available port.
+The app starts at `http://localhost:3000` with both frontend (Vite HMR) and backend (Express/tRPC) on the same port. If port 3000 is busy, it auto-finds the next available port.
 
 ### Build for Production
 
@@ -69,6 +79,23 @@ pnpm start
 ```bash
 pnpm test
 ```
+
+### Important: Why pnpm?
+
+This project **requires pnpm** due to:
+- Workspace-specific dependency overrides in `package.json`
+- Strict peer dependency resolution that npm cannot handle
+- The lockfile format (`pnpm-lock.yaml`)
+
+If you try `npm install` you'll get `ERESOLVE` peer dependency errors. Always use `pnpm install`.
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| `npm install` fails with ERESOLVE | Use `pnpm install` instead |
+| Port 3000 in use | The server auto-picks the next available port, or set `PORT=3001` in `.env` |
+| Database not available | The app works without a database — all features use simulated data |
 
 ---
 
@@ -226,7 +253,7 @@ These endpoints are called by the platform's cron scheduler:
 | `POST /api/scheduled/scanner-processing` | Every hour | Run all scanner types, persist results |
 | `POST /api/scheduled/alert-evaluation` | Every 15 min | Evaluate active alerts, trigger notifications |
 
-All cron endpoints require authentication via the platform SDK.
+All cron endpoints are optionally protected with an API key (`CRON_API_KEY` env var).
 
 ---
 
@@ -268,11 +295,10 @@ Each pattern result includes: confidence score, volume confirmation, breakout le
 
 | Variable | Purpose |
 |----------|---------|
-| `DATABASE_URL` | MySQL/TiDB connection string |
-| `JWT_SECRET` | Session cookie signing |
-| `VITE_APP_ID` | OAuth application ID |
-| `OAUTH_SERVER_URL` | OAuth backend URL |
+| `DATABASE_URL` | MySQL connection string (optional — app works without it) |
+| `JWT_SECRET` | Session cookie signing secret |
 | `PORT` | Server port (default: 3000) |
+| `CRON_API_KEY` | Optional API key to protect scheduled job endpoints |
 
 ---
 

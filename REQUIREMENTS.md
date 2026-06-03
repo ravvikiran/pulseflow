@@ -37,7 +37,7 @@ This document tracks all functional and non-functional requirements for PulseFlo
 | 1.1 | Full-stack TypeScript (React + Express + tRPC) | ✅ | React 19, Express 4, tRPC 11 |
 | 1.2 | Type-safe API layer with end-to-end type inference | ✅ | tRPC + SuperJSON |
 | 1.3 | MySQL database with ORM | ✅ | Drizzle ORM, 16 tables |
-| 1.4 | OAuth authentication with session cookies | ✅ | Manus OAuth |
+| 1.4 | OAuth authentication with session cookies | ✅ | JWT session cookies |
 | 1.5 | Role-based access control (user/admin) | ✅ | `protectedProcedure`, `adminProcedure` |
 | 1.6 | Hot-reload development server | ✅ | Vite + tsx watch |
 | 1.7 | Production build pipeline | ✅ | Vite (client) + esbuild (server) |

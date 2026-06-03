@@ -2,8 +2,6 @@ import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { settingsRouter } from "./routers/settings";
 import { notificationsRouter } from "./routers/notifications";
-import { getSessionCookieOptions } from "./_core/cookies";
-import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
@@ -928,12 +926,10 @@ const historicalRouter = router({
 
 // ─── App Router ───────────────────────────────────────────────────────────────
 export const appRouter = router({
-  system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
     logout: publicProcedure.mutation(({ ctx }) => {
-      const cookieOptions = getSessionCookieOptions(ctx.req);
-      ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
+      ctx.res.clearCookie(COOKIE_NAME, { httpOnly: true, path: "/", sameSite: "lax" });
       return { success: true } as const;
     }),
   }),

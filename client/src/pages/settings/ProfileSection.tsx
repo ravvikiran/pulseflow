@@ -136,7 +136,7 @@ export function ProfileSection({ prefs, onUpdate, isSaving, user: userProp }: Pr
             {/* Login Method */}
             <div>
               <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Authentication</label>
-              <p className="text-sm text-foreground capitalize">{user?.loginMethod ?? "Manus OAuth"}</p>
+              <p className="text-sm text-foreground capitalize">{user?.loginMethod ?? "Session Auth"}</p>
             </div>
           </div>
         </div>

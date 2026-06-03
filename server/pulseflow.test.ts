@@ -254,7 +254,7 @@ function createAuthContext(): TrpcContext {
     openId: "test-user-openid",
     email: "test@pulseflow.io",
     name: "Test User",
-    loginMethod: "manus",
+    loginMethod: "local",
     role: "user",
     createdAt: new Date(),
     updatedAt: new Date(),

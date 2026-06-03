@@ -8,7 +8,6 @@
  * - Alert evaluation (every 15 min)
  */
 import type { Request, Response } from "express";
-import { sdk } from "./_core/sdk";
 import { getDb, upsertMarketData, upsertSectorPerformance, insertSentiment, insertScanResult } from "./db";
 import { alerts, alertHistory, assets } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
@@ -19,24 +18,21 @@ import {
 } from "./marketEngine";
 import { runImprovedScanner, type ScanType } from "./scannerEngine";
 
-async function authenticateCron(req: Request, res: Response): Promise<string | null> {
-  try {
-    const user = await sdk.authenticateRequest(req);
-    if (!user.isCron || !user.taskUid) {
-      res.status(403).json({ error: "cron-only endpoint" });
-      return null;
-    }
-    return user.taskUid;
-  } catch {
-    res.status(403).json({ error: "authentication failed" });
-    return null;
+async function authenticateCron(req: Request, res: Response): Promise<boolean> {
+  // In production, protect these endpoints with an API key or other mechanism
+  // For now, they're accessible directly (suitable for local dev and internal cron)
+  const apiKey = req.headers["x-api-key"];
+  if (process.env.CRON_API_KEY && apiKey !== process.env.CRON_API_KEY) {
+    res.status(403).json({ error: "invalid api key" });
+    return false;
   }
+  return true;
 }
 
 // ─── Market Data Refresh ─────────────────────────────────────────────────────
 export async function handleMarketDataRefresh(req: Request, res: Response) {
-  const taskUid = await authenticateCron(req, res);
-  if (!taskUid) return;
+  const authed = await authenticateCron(req, res);
+  if (!authed) return;
 
   try {
     const db = await getDb();
@@ -75,8 +71,8 @@ export async function handleMarketDataRefresh(req: Request, res: Response) {
 
 // ─── Sector Scoring ──────────────────────────────────────────────────────────
 export async function handleSectorScoring(req: Request, res: Response) {
-  const taskUid = await authenticateCron(req, res);
-  if (!taskUid) return;
+  const authed = await authenticateCron(req, res);
+  if (!authed) return;
 
   try {
     const db = await getDb();
@@ -123,8 +119,8 @@ export async function handleSectorScoring(req: Request, res: Response) {
 
 // ─── Market Sentiment Update ─────────────────────────────────────────────────
 export async function handleSentimentUpdate(req: Request, res: Response) {
-  const taskUid = await authenticateCron(req, res);
-  if (!taskUid) return;
+  const authed = await authenticateCron(req, res);
+  if (!authed) return;
 
   try {
     const db = await getDb();
@@ -143,8 +139,8 @@ export async function handleSentimentUpdate(req: Request, res: Response) {
 
 // ─── Scanner Results Processing ──────────────────────────────────────────────
 export async function handleScannerProcessing(req: Request, res: Response) {
-  const taskUid = await authenticateCron(req, res);
-  if (!taskUid) return;
+  const authed = await authenticateCron(req, res);
+  if (!authed) return;
 
   try {
     const db = await getDb();
@@ -202,8 +198,8 @@ export async function handleScannerProcessing(req: Request, res: Response) {
 
 // ─── Alert Evaluation ────────────────────────────────────────────────────────
 export async function handleAlertEvaluation(req: Request, res: Response) {
-  const taskUid = await authenticateCron(req, res);
-  if (!taskUid) return;
+  const authed = await authenticateCron(req, res);
+  if (!authed) return;
 
   try {
     const db = await getDb();
@@ -251,3 +247,4 @@ export async function handleAlertEvaluation(req: Request, res: Response) {
     res.status(500).json({ error: error.message, timestamp: new Date().toISOString() });
   }
 }
+

@@ -151,11 +151,11 @@ export default function Profile() {
               <Shield className="w-4 h-4 text-primary" /> Security
             </h3>
             <div className="text-xs text-muted-foreground">
-              PulseFlow uses Manus OAuth for secure authentication. Your credentials are managed by the Manus identity platform.
+              PulseFlow uses secure JWT-based session authentication.
             </div>
             <div className="flex items-center gap-2 p-3 bg-bull/10 rounded-lg border border-bull/20">
               <Check className="w-4 h-4 text-bull" />
-              <span className="text-xs text-bull font-medium">Account secured via Manus OAuth</span>
+              <span className="text-xs text-bull font-medium">Account secured via session authentication</span>
             </div>
             <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 text-bear border-bear/30 hover:bg-bear/10" onClick={() => logout()}>
               <LogOut className="w-3.5 h-3.5" /> Sign Out of All Sessions

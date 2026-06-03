@@ -21,7 +21,7 @@ function createAuthContext(): TrpcContext {
       openId: "test-user-openid",
       name: "Test Trader",
       email: "trader@pulseflow.io",
-      loginMethod: "manus",
+      loginMethod: "local",
       role: "user",
       createdAt: new Date("2025-01-01"),
       updatedAt: new Date("2025-01-01"),
