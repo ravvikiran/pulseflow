@@ -14,9 +14,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
-  ResponsiveContainer, Tooltip as RechartsTooltip, Legend,
-  AreaChart, Area, LineChart,
+  Line, XAxis, YAxis, CartesianGrid,
+  ResponsiveContainer, Tooltip as RechartsTooltip,
+  LineChart,
 } from "recharts";
 
 function fmt(n: number | null | undefined, d = 2) {
@@ -60,78 +60,7 @@ const SECTORS = ["All", "Information Technology", "Banking & Finance", "Energy &
   "Real Estate", "Telecom", "FMCG", "Cryptocurrency", "Infrastructure",
 ];
 
-// ─── Candlestick Chart (using ComposedChart) ──────────────────────────────────
-function CandlestickChart({ candles, ema20, ema50, ema200 }: {
-  candles: any[]; ema20: number; ema50: number; ema200: number;
-}) {
-  const closes = candles.map(c => c.close);
-  const ema20Series = useMemo(() => {
-    const k = 2 / 21;
-    let prev = closes[0];
-    return closes.map(p => { const e = p * k + prev * (1 - k); prev = e; return Math.round(e * 100) / 100; });
-  }, [closes]);
-  const ema50Series = useMemo(() => {
-    const k = 2 / 51;
-    let prev = closes[0];
-    return closes.map(p => { const e = p * k + prev * (1 - k); prev = e; return Math.round(e * 100) / 100; });
-  }, [closes]);
-
-  const data = candles.slice(-60).map((c, i) => ({
-    date: new Date(c.timestamp).toLocaleDateString("en", { month: "short", day: "numeric" }),
-    open: Math.round(c.open * 100) / 100,
-    high: Math.round(c.high * 100) / 100,
-    low: Math.round(c.low * 100) / 100,
-    close: Math.round(c.close * 100) / 100,
-    volume: c.volume,
-    ema20: ema20Series[candles.length - 60 + i],
-    ema50: ema50Series[candles.length - 60 + i],
-    bullish: c.close >= c.open,
-  }));
-
-  return (
-    <div className="space-y-1">
-      {/* Price + EMA Chart */}
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="oklch(0.22 0.012 250)" />
-            <XAxis dataKey="date" tick={{ fontSize: 8 }} tickLine={false} axisLine={false} interval={9} />
-            <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} domain={["auto", "auto"]} />
-            <RechartsTooltip
-              contentStyle={{ background: "oklch(0.16 0.012 250)", border: "1px solid oklch(0.25 0.012 250)", borderRadius: "6px", fontSize: "10px" }}
-              formatter={(val: any, name: string) => [fmt(val), name]}
-            />
-            <Legend wrapperStyle={{ fontSize: "9px" }} />
-            {/* Candle bodies via bar */}
-            <Bar dataKey="close" name="Close" fill="var(--color-bull)" fillOpacity={0.0} />
-            {/* EMA Lines */}
-            <Line type="monotone" dataKey="ema20" stroke="#f59e0b" strokeWidth={1.5} dot={false} name="EMA 20" />
-            <Line type="monotone" dataKey="ema50" stroke="#3b82f6" strokeWidth={1.5} dot={false} name="EMA 50" />
-            <Line type="monotone" dataKey="close" stroke="var(--color-primary)" strokeWidth={1.5} dot={false} name="Price" />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-      {/* Volume Profile */}
-      <div className="h-20">
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 0, right: 5, left: -10, bottom: 0 }}>
-            <XAxis dataKey="date" tick={false} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 7 }} tickLine={false} axisLine={false} tickFormatter={fmtVol} />
-            <RechartsTooltip
-              contentStyle={{ background: "oklch(0.16 0.012 250)", border: "1px solid oklch(0.25 0.012 250)", borderRadius: "6px", fontSize: "10px" }}
-              formatter={(val: any) => [fmtVol(val), "Volume"]}
-            />
-            <Bar dataKey="volume" name="Volume" radius={[1, 1, 0, 0]}>
-              {data.map((d, i) => (
-                <rect key={i} fill={d.bullish ? "var(--color-bull)" : "var(--color-bear)"} fillOpacity={0.6} />
-              ))}
-            </Bar>
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
-}
+import TradingViewChart from "@/components/shared/TradingViewChart";
 
 // ─── Asset Detail View ────────────────────────────────────────────────────────
 function AssetDetail({ symbol }: { symbol: string }) {
@@ -238,18 +167,20 @@ function AssetDetail({ symbol }: { symbol: string }) {
       {/* Chart */}
       <div className="pf-card p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-foreground">Price Chart with EMA Overlays</h3>
+          <h3 className="text-sm font-semibold text-foreground">Price Chart — 1 Year (Daily)</h3>
           <div className="flex items-center gap-3 text-[10px]">
             <span className="flex items-center gap-1"><div className="w-3 h-0.5 bg-amber-400" /> EMA 20</span>
             <span className="flex items-center gap-1"><div className="w-3 h-0.5 bg-blue-500" /> EMA 50</span>
-            <span className="flex items-center gap-1"><div className="w-3 h-0.5 bg-primary" /> Price</span>
+            <span className="flex items-center gap-1"><div className="w-3 h-0.5 bg-violet-500" /> EMA 200</span>
           </div>
         </div>
-        <CandlestickChart
+        <TradingViewChart
           candles={asset.candles ?? []}
-          ema20={ind?.ema20 ?? 0}
-          ema50={ind?.ema50 ?? 0}
-          ema200={ind?.ema200 ?? 0}
+          ema20={(asset as any).emaData?.ema20}
+          ema50={(asset as any).emaData?.ema50}
+          ema200={(asset as any).emaData?.ema200}
+          height={420}
+          showVolume={true}
         />
       </div>
 

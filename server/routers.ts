@@ -653,7 +653,7 @@ const assetsRouter = router({
       const asset = all.find(a => a.symbol === input.symbol);
       if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
 
-      const candles = generateMarketData(input.symbol, 90);
+      const candles = generateMarketData(input.symbol, 365);
       const closes = candles.map(c => c.close);
       const ema20 = calculateEMA(closes, 20);
       const ema50 = calculateEMA(closes, 50);
@@ -674,7 +674,12 @@ const assetsRouter = router({
         ...asset,
         market,
         ...price,
-        candles: candles.slice(-90),
+        candles,
+        emaData: {
+          ema20: ema20.map(v => Math.round(v * 100) / 100),
+          ema50: ema50.map(v => Math.round(v * 100) / 100),
+          ema200: ema200.map(v => Math.round(v * 100) / 100),
+        },
         indicators: {
           ema20: Math.round(ema20[ema20.length - 1] * 100) / 100,
           ema50: Math.round(ema50[ema50.length - 1] * 100) / 100,
