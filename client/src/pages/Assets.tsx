@@ -341,12 +341,20 @@ function AssetList() {
   const [sector, setSector] = useState("All");
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
 
-  const { data: searchResults, isLoading } = trpc.assets.search.useQuery(
-    { query: search.length >= 2 ? search : (sector !== "All" ? sector : assetType !== "All" ? assetType : "RELIANCE") },
-    { refetchInterval: 30000 }
+  // Use search query when user is typing, otherwise use the list endpoint
+  const { data: searchResults, isLoading: searchLoading } = trpc.assets.search.useQuery(
+    { query: search },
+    { enabled: search.length >= 2, refetchInterval: 30000 }
   );
 
-  const displayAssets = searchResults;
+  const marketFilter = assetType === "All" ? "all" : assetType === "Crypto" ? "crypto" : assetType === "US" ? "us" : "india";
+  const { data: listResults, isLoading: listLoading } = trpc.assets.list.useQuery(
+    { market: marketFilter as any, sector: sector !== "All" ? sector : undefined },
+    { enabled: search.length < 2, refetchInterval: 30000 }
+  );
+
+  const isLoading = search.length >= 2 ? searchLoading : listLoading;
+  const displayAssets = search.length >= 2 ? searchResults : listResults;
 
   return (
     <div className="p-4 lg:p-6 space-y-5 animate-[fade-up_0.3s_ease-out]">

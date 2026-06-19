@@ -4,6 +4,8 @@
  * No AI/ML — pure statistical and technical analysis
  */
 
+import { getAssetBySymbol as registryLookup } from "./assetRegistry";
+
 export const SECTORS = [
   "Information Technology",
   "Banking & Finance",
@@ -82,7 +84,7 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-// Generate realistic price based on symbol hash
+// Generate realistic price based on symbol — checks static map first, then registries
 function getBasePrice(symbol: string): number {
   const prices: Record<string, number> = {
     RELIANCE: 2850, TCS: 3920, HDFCBANK: 1680, INFY: 1750, ICICIBANK: 1240,
@@ -96,7 +98,12 @@ function getBasePrice(symbol: string): number {
     NIFTY50: 24800, SENSEX: 81500, NIFTYBANK: 52000, NIFTYIT: 38000,
     NIFTYPHARMA: 21000, NIFTYMETAL: 9800, NIFTYAUTO: 24000, NIFTYFMCG: 58000,
   };
-  return prices[symbol] ?? 1000;
+  if (prices[symbol]) return prices[symbol];
+
+  // Fallback: look up base price from asset registries
+  const asset = registryLookup(symbol);
+  if (asset && (asset as any).basePrice) return (asset as any).basePrice;
+  return 1000;
 }
 
 // Generate OHLCV candle with realistic variation

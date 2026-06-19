@@ -25,13 +25,14 @@ import {
 import { runImprovedScanner, type ScanType as ImprovedScanType, type Timeframe as ImprovedTimeframe } from "./scannerEngine";
 import { runPatternScanner, PATTERN_NAMES, type PatternResult } from "./patternEngine";
 import { runDataValidation, NSE_REGISTRY, CRYPTO_REGISTRY, US_REGISTRY } from "./assetRegistry";
+import { getCurrentPrice, getCurrentPrices, getAssetDetailData, getRealSectorPerformance, runRealScanner } from "./dataProvider";
 
 // ─── Domain Constants ─────────────────────────────────────────────────────────
 
 const INDIA_SECTORS = [
-  "Information Technology", "Banking & Finance", "Energy & Oil",
+  "Information Technology", "Banking & Finance", "Oil & Gas",
   "Healthcare & Pharma", "Consumer Goods", "Metals & Mining",
-  "Automobile", "Real Estate", "Telecom", "FMCG", "Infrastructure",
+  "Automobiles", "Real Estate", "Telecom", "FMCG", "Infrastructure",
 ];
 
 const CRYPTO_SECTORS = ["Cryptocurrency"];
@@ -94,18 +95,30 @@ const globalRouter = router({
       spxChange: Math.round((Math.sin(Date.now() / 3600000 * 0.2) * 1.5 + 0.3) * 100) / 100,
     };
 
-    // India top movers (NSE only)
-    const indiaPrices = NSE_STOCKS.map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
+    // India top movers (NSE only — real data)
+    const indiaSymbols = NSE_REGISTRY.slice(0, 30).map(a => a.symbol); // Top 30 for speed
+    const indiaPriceMap = await getCurrentPrices(indiaSymbols);
+    const indiaPrices = NSE_REGISTRY.slice(0, 30).map(a => ({
+      symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency,
+      ...(indiaPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
+    }));
     const indiaGainers = [...indiaPrices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 3);
     const indiaLosers = [...indiaPrices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 3);
 
-    // Crypto top movers (crypto only)
-    const cryptoPrices = CRYPTO_ASSETS.map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
+    // Crypto top movers (real data)
+    const cryptoSymbols = CRYPTO_REGISTRY.slice(0, 15).map(a => a.symbol); // Top 15 for speed
+    const cryptoPriceMap = await getCurrentPrices(cryptoSymbols);
+    const cryptoPrices = CRYPTO_REGISTRY.slice(0, 15).map(a => ({
+      symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency,
+      ...(cryptoPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
+    }));
     const cryptoGainers = [...cryptoPrices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 3);
     const cryptoLosers = [...cryptoPrices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 3);
 
     // US top movers (US stocks only)
-    const usPrices = US_STOCKS.map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
+    const usSymbols = US_STOCKS.map(a => a.symbol);
+    const usPriceMap = await getCurrentPrices(usSymbols);
+    const usPrices = US_STOCKS.map(a => ({ ...a, ...(usPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
     const usGainers = [...usPrices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 3);
     const usLosers = [...usPrices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 3);
 
@@ -154,16 +167,20 @@ const indiaRouter = router({
   // Dashboard overview — NSE stocks and Indian indices only
   dashboard: publicProcedure.query(async () => {
     const sentiment = generateMarketSentiment();
-    const sectorData = INDIA_SECTORS.map(s => {
-      const perf = generateSectorPerformance(s);
-      return { sector: s, priceChange1d: perf.priceChange1d, priceChange1w: perf.priceChange1w, priceChange1m: perf.priceChange1m, momentumScore: perf.momentumScore, strengthScore: perf.strengthScore, volumeScore: perf.volumeScore, breakoutFrequency: perf.breakoutFrequency, inflowOutflow: perf.inflowOutflow, performanceScore: perf.performanceScore };
-    }).sort((a, b) => b.performanceScore - a.performanceScore);
+    const sectorData = await getRealSectorPerformance(INDIA_SECTORS, "india");
 
-    const prices = NSE_STOCKS.map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
+    const nseSymbols = NSE_REGISTRY.map(a => a.symbol);
+    const nsePriceMap = await getCurrentPrices(nseSymbols);
+    const prices = NSE_REGISTRY.map(a => ({
+      symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency,
+      ...(nsePriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
+    }));
     const topGainers = [...prices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 10);
     const topLosers = [...prices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 10);
 
-    const indices = INDICES.map(idx => ({ ...idx, ...generateCurrentPrice(idx.symbol) }));
+    const indices = INDICES.map(idx => idx.symbol);
+    const indicesPriceMap = await getCurrentPrices(indices);
+    const indicesData = INDICES.map(idx => ({ ...idx, ...(indicesPriceMap.get(idx.symbol) ?? generateCurrentPrice(idx.symbol)) }));
 
     // FII/DII simulated activity
     const seed = Math.floor(Date.now() / 3600000);
@@ -183,7 +200,7 @@ const indiaRouter = router({
       sectorPerformance: sectorData,
       topGainers,
       topLosers,
-      indices,
+      indices: indicesData,
       fiiActivity,
       diiActivity,
       breadth: {
@@ -198,21 +215,16 @@ const indiaRouter = router({
 
   // NSE sector heatmap — India sectors only
   sectorHeatmap: publicProcedure.query(async () => {
-    return INDIA_SECTORS.map(sector => {
-      const perf = generateSectorPerformance(sector);
-      return { sector, change: perf.priceChange1d, score: perf.performanceScore, inflowOutflow: perf.inflowOutflow };
-    });
+    const sectorData = await getRealSectorPerformance(INDIA_SECTORS, "india");
+    return sectorData.map(s => ({ sector: s.sector, change: s.priceChange1d, score: s.performanceScore, inflowOutflow: s.inflowOutflow }));
   }),
 
   // Sector rotation — India sectors only
   sectorRotation: publicProcedure
     .input(z.object({ timeframe: z.string().default("1d") }))
     .query(async ({ input }) => {
-      return INDIA_SECTORS.map((sector, i) => {
-        const perf = generateSectorPerformance(sector);
-        return { ...perf, sector, timeframe: input.timeframe, rank: i + 1 };
-      }).sort((a, b) => b.performanceScore - a.performanceScore)
-        .map((s, i) => ({ ...s, rank: i + 1 }));
+      const sectorData = await getRealSectorPerformance(INDIA_SECTORS, "india");
+      return sectorData.map((s, i) => ({ ...s, timeframe: input.timeframe, rank: i + 1 }));
     }),
 
   // Sector detail — India sectors only
@@ -222,26 +234,33 @@ const indiaRouter = router({
       if (!INDIA_SECTORS.includes(input.sector)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid India sector" });
       }
-      const current = generateSectorPerformance(input.sector);
+      const sectorPerf = await getRealSectorPerformance([input.sector], "india");
+      const current = sectorPerf[0] ?? { sector: input.sector, priceChange1d: 0, priceChange1w: 0, priceChange1m: 0, momentumScore: 50, strengthScore: 50, volumeScore: 50, breakoutFrequency: 0, inflowOutflow: 0, performanceScore: 50 };
+
+      // Get real stocks in this sector with prices
+      const sectorStocks = NSE_REGISTRY.filter(a => a.sector === input.sector);
+      const sectorSymbols = sectorStocks.map(a => a.symbol);
+      const sectorPriceMap = await getCurrentPrices(sectorSymbols);
+      const sectorAssetsWithPrices = sectorStocks.map(a => ({
+        symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency,
+        ...(sectorPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
+      }));
+
+      // History is still estimated (would need daily historical fetches for each stock)
       const history = [];
-      for (let i = input.days; i >= 0; i--) {
+      for (let i = Math.min(input.days, 30); i >= 0; i--) {
         const ts = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const seed = input.sector.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-        const daySeed = Math.floor(ts.getTime() / 86400000);
-        const change = Math.sin((seed + daySeed) * 0.3) * 3 + (Math.random() - 0.5) * 2;
         history.push({
           timestamp: ts,
-          performanceScore: Math.round((50 + change * 5) * 100) / 100,
-          priceChange1d: Math.round(change * 100) / 100,
-          inflowOutflow: Math.round((change * 200 + (Math.random() - 0.5) * 100) * 100) / 100,
+          performanceScore: current.performanceScore + (Math.random() - 0.5) * 5,
+          priceChange1d: current.priceChange1d + (Math.random() - 0.5) * 1,
+          inflowOutflow: current.inflowOutflow + (Math.random() - 0.5) * 100,
         });
       }
-      const sectorAssets = NSE_STOCKS.filter(a => a.sector === input.sector)
-        .map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
-      return { current, history, assets: sectorAssets };
+      return { current, history, assets: sectorAssetsWithPrices };
     }),
 
-  // NSE scanner — NSE stocks only (improved accuracy engine)
+  // NSE scanner — NSE stocks only (real data)
   scanner: publicProcedure
     .input(z.object({
       scanType: IMPROVED_SCAN_TYPES,
@@ -255,14 +274,11 @@ const indiaRouter = router({
       if (input.sector && !INDIA_SECTORS.includes(input.sector)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid India sector" });
       }
-      return runImprovedScanner({
+      return runRealScanner({
         domain: "india",
-        scanType: input.scanType as ImprovedScanType,
-        timeframe: input.timeframe as ImprovedTimeframe,
+        scanType: input.scanType,
         sector: input.sector,
-        minQualityScore: input.minQualityScore,
         maxResults: input.maxResults,
-        volumeMultiplier: input.volumeMultiplier,
       });
     }),
 
@@ -292,14 +308,18 @@ const indiaRouter = router({
   stocks: publicProcedure
     .input(z.object({ sector: z.string().optional() }))
     .query(async ({ input }) => {
-      let list = [...NSE_STOCKS];
+      let list: Array<{ symbol: string; name: string; sector: string; exchange: string; currency: string }> = NSE_REGISTRY.map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
       if (input.sector) list = list.filter(a => a.sector === input.sector);
-      return list.map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
+      const symbols = list.map(a => a.symbol);
+      const priceMap = await getCurrentPrices(symbols);
+      return list.map(a => ({ ...a, ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
     }),
 
   // Indian indices
   indices: publicProcedure.query(async () => {
-    return INDICES.map(idx => ({ ...idx, ...generateCurrentPrice(idx.symbol) }));
+    const symbols = INDICES.map(idx => idx.symbol);
+    const priceMap = await getCurrentPrices(symbols);
+    return INDICES.map(idx => ({ ...idx, ...(priceMap.get(idx.symbol) ?? generateCurrentPrice(idx.symbol)) }));
   }),
 
   // India sentiment history
@@ -390,10 +410,17 @@ const cryptoRouter = router({
   // Crypto dashboard — crypto assets only
   dashboard: publicProcedure.query(async () => {
     const seed = Math.floor(Date.now() / 3600000);
-    const btcPrice = generateCurrentPrice("BTC");
-    const ethPrice = generateCurrentPrice("ETH");
+    const btcQuote = await getCurrentPrice("BTC");
+    const ethQuote = await getCurrentPrice("ETH");
+    const btcPrice = btcQuote;
+    const ethPrice = ethQuote;
 
-    const cryptoPrices = CRYPTO_ASSETS.map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
+    const cryptoSymbols = CRYPTO_REGISTRY.map(a => a.symbol);
+    const cryptoPriceMap = await getCurrentPrices(cryptoSymbols);
+    const cryptoPrices = CRYPTO_REGISTRY.map(a => ({
+      symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency, category: a.category,
+      ...(cryptoPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
+    }));
     const topGainers = [...cryptoPrices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 10);
     const topLosers = [...cryptoPrices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 10);
 
@@ -406,7 +433,7 @@ const cryptoRouter = router({
 
     // Altcoin momentum — ETH, BNB, SOL, etc. vs BTC
     const altcoins = CRYPTO_ASSETS.filter(a => a.symbol !== "BTC").map(a => {
-      const price = generateCurrentPrice(a.symbol);
+      const price = cryptoPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol);
       const btcReturn = btcPrice.changePercent;
       const altReturn = price.changePercent;
       return {
@@ -442,19 +469,22 @@ const cryptoRouter = router({
 
   // Crypto heatmap — crypto only
   heatmap: publicProcedure.query(async () => {
-    return CRYPTO_ASSETS.map(a => {
-      const price = generateCurrentPrice(a.symbol);
+    const symbols = CRYPTO_REGISTRY.map(a => a.symbol);
+    const priceMap = await getCurrentPrices(symbols);
+    return CRYPTO_REGISTRY.map(a => {
+      const price = priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol);
       return {
         symbol: a.symbol,
         name: a.name,
         change: price.changePercent,
         price: price.price,
         volume: price.volume,
+        category: a.category,
       };
     });
   }),
 
-  // Crypto scanner — crypto only (improved accuracy engine)
+  // Crypto scanner — crypto only (real data)
   scanner: publicProcedure
     .input(z.object({
       scanType: IMPROVED_SCAN_TYPES,
@@ -464,13 +494,10 @@ const cryptoRouter = router({
       volumeMultiplier: z.number().default(2.0),
     }))
     .query(async ({ input }) => {
-      return runImprovedScanner({
+      return runRealScanner({
         domain: "crypto",
-        scanType: input.scanType as ImprovedScanType,
-        timeframe: input.timeframe as ImprovedTimeframe,
-        minQualityScore: input.minQualityScore,
+        scanType: input.scanType,
         maxResults: input.maxResults,
-        volumeMultiplier: input.volumeMultiplier,
       });
     }),
 
@@ -494,7 +521,9 @@ const cryptoRouter = router({
 
   // Crypto assets list
   assets: publicProcedure.query(async () => {
-    return CRYPTO_ASSETS.map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
+    const symbols = CRYPTO_REGISTRY.map(a => a.symbol);
+    const priceMap = await getCurrentPrices(symbols);
+    return CRYPTO_REGISTRY.map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency, category: a.category, ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
   }),
 
   // BTC dominance history
@@ -561,15 +590,14 @@ const usRouter = router({
   // US dashboard — US stocks and indices only
   dashboard: publicProcedure.query(async () => {
     const seed = Math.floor(Date.now() / 3600000);
-    const indices = US_INDICES.map(idx => ({ ...idx, ...generateCurrentPrice(idx.symbol) }));
-    const prices = US_STOCKS.map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
+    const allUsSymbols = [...US_INDICES.map(i => i.symbol), ...US_STOCKS.map(s => s.symbol)];
+    const usPriceMap = await getCurrentPrices(allUsSymbols);
+    const indices = US_INDICES.map(idx => ({ ...idx, ...(usPriceMap.get(idx.symbol) ?? generateCurrentPrice(idx.symbol)) }));
+    const prices = US_STOCKS.map(a => ({ ...a, ...(usPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
     const topGainers = [...prices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 10);
     const topLosers = [...prices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 10);
 
-    const sectorData = US_SECTORS.map(s => {
-      const perf = generateSectorPerformance(s);
-      return { sector: s, priceChange1d: perf.priceChange1d, priceChange1w: perf.priceChange1w, priceChange1m: perf.priceChange1m, momentumScore: perf.momentumScore, strengthScore: perf.strengthScore, volumeScore: perf.volumeScore, breakoutFrequency: perf.breakoutFrequency, inflowOutflow: perf.inflowOutflow, performanceScore: perf.performanceScore };
-    }).sort((a, b) => b.performanceScore - a.performanceScore);
+    const sectorData = await getRealSectorPerformance(US_SECTORS, "us");
 
     const marketSentiment = {
       sentimentScore: Math.round((Math.sin(seed * 0.4) * 30 + 15) * 100) / 100,
@@ -591,10 +619,8 @@ const usRouter = router({
 
   // US sector heatmap
   sectorHeatmap: publicProcedure.query(async () => {
-    return US_SECTORS.map(sector => {
-      const perf = generateSectorPerformance(sector);
-      return { sector, change: perf.priceChange1d, score: perf.performanceScore, inflowOutflow: perf.inflowOutflow };
-    });
+    const sectorData = await getRealSectorPerformance(US_SECTORS, "us");
+    return sectorData.map(s => ({ sector: s.sector, change: s.priceChange1d, score: s.performanceScore, inflowOutflow: s.inflowOutflow }));
   }),
 
   // US scanner
@@ -612,7 +638,7 @@ const usRouter = router({
       });
       return results.map(r => {
         const asset = US_STOCKS.find(a => a.symbol === r.symbol);
-        return { ...r, ...asset, ...generateCurrentPrice(r.symbol) };
+        return { ...r, ...asset };
       });
     }),
 
@@ -622,12 +648,16 @@ const usRouter = router({
     .query(async ({ input }) => {
       let list = [...US_STOCKS];
       if (input.sector) list = list.filter(a => a.sector === input.sector);
-      return list.map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
+      const symbols = list.map(a => a.symbol);
+      const priceMap = await getCurrentPrices(symbols);
+      return list.map(a => ({ ...a, ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
     }),
 
   // US indices
   indices: publicProcedure.query(async () => {
-    return US_INDICES.map(idx => ({ ...idx, ...generateCurrentPrice(idx.symbol) }));
+    const symbols = US_INDICES.map(idx => idx.symbol);
+    const priceMap = await getCurrentPrices(symbols);
+    return US_INDICES.map(idx => ({ ...idx, ...(priceMap.get(idx.symbol) ?? generateCurrentPrice(idx.symbol)) }));
   }),
 });
 
@@ -641,56 +671,92 @@ const assetsRouter = router({
       if (input.market === "india" || input.market === "all") all = [...all, ...NSE_STOCKS, ...INDICES];
       if (input.market === "crypto" || input.market === "all") all = [...all, ...CRYPTO_ASSETS];
       if (input.market === "us" || input.market === "all") all = [...all, ...US_STOCKS, ...US_INDICES];
-      return all.filter(a =>
-        a.symbol.toLowerCase().includes(q) || a.name.toLowerCase().includes(q)
-      ).slice(0, 15).map(a => ({ ...a, ...generateCurrentPrice(a.symbol) }));
+
+      // Also include full registries for complete coverage
+      if (input.market === "india" || input.market === "all") {
+        const registrySymbols = new Set(all.map(a => a.symbol));
+        NSE_REGISTRY.filter(a => !registrySymbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
+      }
+      if (input.market === "crypto" || input.market === "all") {
+        const registrySymbols = new Set(all.map(a => a.symbol));
+        CRYPTO_REGISTRY.filter(a => !registrySymbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
+      }
+      if (input.market === "us" || input.market === "all") {
+        const registrySymbols = new Set(all.map(a => a.symbol));
+        US_REGISTRY.filter(a => !registrySymbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
+      }
+
+      const filtered = all.filter(a =>
+        a.symbol.toLowerCase().includes(q) || a.name.toLowerCase().includes(q) || (a.sector && a.sector.toLowerCase().includes(q))
+      ).slice(0, 30);
+      const symbols = filtered.map(a => a.symbol);
+      const priceMap = await getCurrentPrices(symbols);
+      return filtered.map(a => ({ ...a, ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
+    }),
+
+  // List all assets (no search required)
+  list: publicProcedure
+    .input(z.object({ market: z.enum(["india", "crypto", "us", "all"]).default("all"), sector: z.string().optional() }))
+    .query(async ({ input }) => {
+      let all: Array<{ symbol: string; name: string; sector?: string; exchange?: string; currency?: string }> = [];
+      if (input.market === "india" || input.market === "all") {
+        all = [...all, ...NSE_STOCKS, ...INDICES];
+        const symbols = new Set(all.map(a => a.symbol));
+        NSE_REGISTRY.filter(a => !symbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
+      }
+      if (input.market === "crypto" || input.market === "all") {
+        const symbols = new Set(all.map(a => a.symbol));
+        CRYPTO_REGISTRY.filter(a => !symbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
+        all = [...all, ...CRYPTO_ASSETS.filter(a => !all.some(x => x.symbol === a.symbol))];
+      }
+      if (input.market === "us" || input.market === "all") {
+        const symbols = new Set(all.map(a => a.symbol));
+        US_REGISTRY.filter(a => !symbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
+        all = [...all, ...US_STOCKS.filter(a => !all.some(x => x.symbol === a.symbol)), ...US_INDICES.filter(a => !all.some(x => x.symbol === a.symbol))];
+      }
+
+      if (input.sector && input.sector !== "All") {
+        all = all.filter(a => a.sector === input.sector);
+      }
+
+      const sliced = all.slice(0, 50);
+      const symbols = sliced.map(a => a.symbol);
+      const priceMap = await getCurrentPrices(symbols);
+      return sliced.map(a => ({ ...a, ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
     }),
 
   detail: publicProcedure
     .input(z.object({ symbol: z.string() }))
     .query(async ({ input }) => {
       const all = [...NSE_STOCKS, ...CRYPTO_ASSETS, ...INDICES, ...US_STOCKS, ...US_INDICES];
-      const asset = all.find(a => a.symbol === input.symbol);
+      let asset: { symbol: string; name: string; sector?: string; exchange?: string; currency?: string } | undefined = all.find(a => a.symbol === input.symbol);
+
+      // Also check full registries if not found in the basic lists
+      if (!asset) {
+        const regAsset = NSE_REGISTRY.find(a => a.symbol === input.symbol)
+          || CRYPTO_REGISTRY.find(a => a.symbol === input.symbol)
+          || US_REGISTRY.find(a => a.symbol === input.symbol);
+        if (regAsset) {
+          asset = { symbol: regAsset.symbol, name: regAsset.name, sector: regAsset.sector, exchange: regAsset.exchange, currency: regAsset.currency };
+        }
+      }
       if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
 
-      const candles = generateMarketData(input.symbol, 365);
-      const closes = candles.map(c => c.close);
-      const ema20 = calculateEMA(closes, 20);
-      const ema50 = calculateEMA(closes, 50);
-      const ema200 = calculateEMA(closes, 200);
-      const rsi = calculateRSI(closes);
-      const high52w = Math.max(...closes.slice(-252));
-      const low52w = Math.min(...closes.slice(-252));
-      const ath = Math.max(...closes);
-      const volumeAvg20 = candles.slice(-20).reduce((a, c) => a + c.volume, 0) / 20;
-      const price = generateCurrentPrice(input.symbol);
+      // Get real historical data + indicators
+      const detailData = await getAssetDetailData(input.symbol);
 
       // Determine market domain
-      const market = CRYPTO_ASSETS.some(a => a.symbol === input.symbol) ? "crypto"
-        : US_STOCKS.some(a => a.symbol === input.symbol) || US_INDICES.some(a => a.symbol === input.symbol) ? "us"
+      const market = CRYPTO_REGISTRY.some(a => a.symbol === input.symbol) ? "crypto"
+        : US_REGISTRY.some(a => a.symbol === input.symbol) ? "us"
         : "india";
 
       return {
         ...asset,
         market,
-        ...price,
-        candles,
-        emaData: {
-          ema20: ema20.map(v => Math.round(v * 100) / 100),
-          ema50: ema50.map(v => Math.round(v * 100) / 100),
-          ema200: ema200.map(v => Math.round(v * 100) / 100),
-        },
-        indicators: {
-          ema20: Math.round(ema20[ema20.length - 1] * 100) / 100,
-          ema50: Math.round(ema50[ema50.length - 1] * 100) / 100,
-          ema200: Math.round(ema200[ema200.length - 1] * 100) / 100,
-          rsi: Math.round(rsi * 100) / 100,
-          high52w: Math.round(high52w * 100) / 100,
-          low52w: Math.round(low52w * 100) / 100,
-          ath: Math.round(ath * 100) / 100,
-          volumeAvg20: Math.round(volumeAvg20),
-          volumeRatio: Math.round((price.volume / volumeAvg20) * 100) / 100,
-        },
+        ...detailData.currentPrice,
+        candles: detailData.candles,
+        emaData: detailData.emaData,
+        indicators: detailData.indicators,
       };
     }),
 
@@ -726,9 +792,11 @@ const watchlistsRouter = router({
     .query(async ({ ctx, input }) => {
       const wl = await getWatchlistWithItems(input.id, ctx.user.id);
       if (!wl) throw new TRPCError({ code: "NOT_FOUND", message: "Watchlist not found" });
+      const itemSymbols = wl.items.map(item => item.asset.symbol);
+      const itemPriceMap = await getCurrentPrices(itemSymbols);
       const enrichedItems = wl.items.map(item => ({
         ...item,
-        price: generateCurrentPrice(item.asset.symbol),
+        price: itemPriceMap.get(item.asset.symbol) ?? generateCurrentPrice(item.asset.symbol),
         market: CRYPTO_ASSETS.some(a => a.symbol === item.asset.symbol) ? "crypto"
           : US_STOCKS.some(a => a.symbol === item.asset.symbol) ? "us" : "india",
       }));

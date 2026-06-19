@@ -94,8 +94,12 @@ function isDuplicate(symbol: string, scanType: ScanType, timeframe: Timeframe): 
   const key = `${symbol}:${scanType}:${timeframe}`;
   const lastSeen = dedupeStore.get(key);
   if (lastSeen && Date.now() - lastSeen < COOLDOWN_MS) return true;
-  dedupeStore.set(key, Date.now());
   return false;
+}
+
+function setDedupe(symbol: string, scanType: ScanType, timeframe: Timeframe): void {
+  const key = `${symbol}:${scanType}:${timeframe}`;
+  dedupeStore.set(key, Date.now());
 }
 
 // ─── EMA Calculation (Wilder's Smoothing) ─────────────────────────────────────
@@ -218,25 +222,37 @@ function computeQualityScore(params: {
 // ─── Synthetic OHLCV Generator ────────────────────────────────────────────────
 // Generates realistic-looking historical candles for a given asset
 
+// Seeded random for deterministic OHLCV generation per symbol
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
 function generateOHLCV(
   basePrice: number,
   volatility: number,
   periods: number,
-  trend: "up" | "down" | "sideways" = "up"
+  trend: "up" | "down" | "sideways" = "up",
+  symbolSeed: number = 0
 ): OHLCV[] {
   const candles: OHLCV[] = [];
-  let price = basePrice * (0.7 + Math.random() * 0.3); // start 70-100% of current
+  let seed = symbolSeed;
+  const nextRand = () => { seed++; return seededRandom(seed); };
+
+  let price = basePrice * (0.7 + nextRand() * 0.3); // start 70-100% of current
   const trendFactor = trend === "up" ? 1.0003 : trend === "down" ? 0.9997 : 1.0;
-  const baseVolume = 1_000_000 + Math.random() * 9_000_000;
+  const baseVolume = 1_000_000 + nextRand() * 9_000_000;
 
   for (let i = 0; i < periods; i++) {
-    const dayVol = volatility * (0.5 + Math.random());
+    const dayVol = volatility * (0.5 + nextRand());
     const open = price;
-    const change = (Math.random() - 0.48) * dayVol * price;
+    const change = (nextRand() - 0.48) * dayVol * price;
     const close = Math.max(price * 0.5, price + change) * trendFactor;
-    const high = Math.max(open, close) * (1 + Math.random() * dayVol * 0.5);
-    const low = Math.min(open, close) * (1 - Math.random() * dayVol * 0.5);
-    const volume = baseVolume * (0.5 + Math.random() * 1.5);
+    const high = Math.max(open, close) * (1 + nextRand() * dayVol * 0.5);
+    const low = Math.min(open, close) * (1 - nextRand() * dayVol * 0.5);
+    // Create occasional volume spikes (every ~10-15 candles) for realistic scanning
+    const volumeSpikeFactor = nextRand() > 0.85 ? (2.0 + nextRand() * 2.0) : (0.5 + nextRand() * 1.0);
+    const volume = baseVolume * volumeSpikeFactor;
 
     candles.push({
       open, high, low, close,
@@ -292,7 +308,7 @@ function scanEMAAlignment(
   // EMA spacing check: EMAs should be properly spread (not compressed)
   const ema20_50_gap = (ema20 - ema50) / ema50;
   const ema50_200_gap = (ema50 - ema200) / ema200;
-  if (ema20_50_gap < 0.005 || ema50_200_gap < 0.01) return null; // Too compressed
+  if (ema20_50_gap < 0.002 || ema50_200_gap < 0.005) return null; // Too compressed
 
   const rsi = calculateRSI(closes);
   const volumes = candles.map(c => c.volume);
@@ -369,7 +385,7 @@ function scanVolumeSpike(
   const changePct = ((price - prevClose) / prevClose) * 100;
 
   // Volume spike should be accompanied by price movement
-  if (Math.abs(changePct) < 0.5) return null;
+  if (Math.abs(changePct) < 0.2) return null;
 
   const rsi = calculateRSI(closes);
   const ema20s = calculateEMA(closes, 20);
@@ -811,15 +827,16 @@ export function runImprovedScanner(options: ScannerOptions): ScanResult[] {
     if (respectCooldown && !isCooledDown(asset.symbol, scanType)) continue;
 
     // Deduplication check
-    if (isDuplicate(asset.symbol, scanType, timeframe)) continue;
+    if (respectCooldown && isDuplicate(asset.symbol, scanType, timeframe)) continue;
 
-    // Generate synthetic OHLCV data
-    const trend = "up"; // default trend for simulation
+    // Generate deterministic OHLCV data using symbol-based seed
+    const symbolSeed = asset.symbol.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
     const candles = generateOHLCV(
       asset.basePrice,
       0.02,
       260, // 1 year of daily candles
-      trend
+      "up",
+      symbolSeed
     );
 
     let result: ScanResult | null = null;
@@ -846,8 +863,11 @@ export function runImprovedScanner(options: ScannerOptions): ScanResult[] {
     }
 
     if (result && result.qualityScore >= minQualityScore) {
-      // Set cooldown for this symbol+scanType
-      if (respectCooldown) setCooldown(asset.symbol, scanType);
+      // Set cooldown and dedup only AFTER a successful result
+      if (respectCooldown) {
+        setCooldown(asset.symbol, scanType);
+        setDedupe(asset.symbol, scanType, timeframe);
+      }
       results.push(result);
     }
 
