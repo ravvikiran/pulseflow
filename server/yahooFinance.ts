@@ -105,6 +105,7 @@ const historyCache = new Map<string, CacheEntry<HistoryCandle[]>>();
 
 const QUOTE_CACHE_MS = 60 * 1000; // 1 minute for quotes
 const HISTORY_CACHE_MS = 5 * 60 * 1000; // 5 minutes for historical data
+const MAX_CACHE_SIZE = 500; // Maximum entries per cache
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string, maxAge: number): T | null {
   const entry = cache.get(key);
@@ -117,6 +118,13 @@ function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string, maxAge: nu
 }
 
 function setCache<T>(cache: Map<string, CacheEntry<T>>, key: string, data: T): void {
+  // Evict oldest entries if cache is too large
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const oldest = [...cache.entries()].sort((a, b) => a[1].timestamp - b[1].timestamp);
+    for (let i = 0; i < Math.floor(MAX_CACHE_SIZE * 0.3); i++) {
+      cache.delete(oldest[i][0]);
+    }
+  }
   cache.set(key, { data, timestamp: Date.now() });
 }
 
@@ -296,6 +304,10 @@ export async function getHistory(
 }
 
 const historyFailedSet = new Set<string>();
+const MAX_FAILED_SET_SIZE = 200;
+
+// Periodic cleanup of the failed set (every 30 min, allow retries)
+setInterval(() => { historyFailedSet.clear(); }, 30 * 60 * 1000);
 
 function getStartDate(period: string): Date {
   const now = new Date();

@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Line, XAxis, YAxis, CartesianGrid,
-  ResponsiveContainer, Tooltip as RechartsTooltip,
+  ResponsiveContainer, Tooltip as RechartsTooltip, Legend,
   LineChart,
 } from "recharts";
 

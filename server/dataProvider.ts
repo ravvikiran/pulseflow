@@ -492,25 +492,40 @@ function wilderRSI(prices: number[], period = 14): number {
 
 /** MACD (12, 26, 9) — returns line, signal, and histogram */
 function macdCalc(prices: number[]): { line: number; signal: number; histogram: number } {
-  if (prices.length < 26) return { line: 0, signal: 0, histogram: 0 };
+  if (prices.length < 35) return { line: 0, signal: 0, histogram: 0 }; // Need 26 + 9 minimum
 
-  // EMA12
+  // EMA12: seed from first 12, then apply from index 12 onward
   const k12 = 2 / 13;
   let ema12 = prices.slice(0, 12).reduce((a, b) => a + b, 0) / 12;
-  // EMA26
-  const k26 = 2 / 27;
-  let ema26 = prices.slice(0, 26).reduce((a, b) => a + b, 0) / 26;
-
-  const macdLine: number[] = [];
-
-  for (let i = 26; i < prices.length; i++) {
+  for (let i = 12; i < prices.length; i++) {
     ema12 = prices[i] * k12 + ema12 * (1 - k12);
-    ema26 = prices[i] * k26 + ema26 * (1 - k26);
-    macdLine.push(ema12 - ema26);
   }
 
-  // Signal line: 9-period EMA of MACD
+  // EMA26: seed from first 26, then apply from index 26 onward
+  const k26 = 2 / 27;
+  let ema26 = prices.slice(0, 26).reduce((a, b) => a + b, 0) / 26;
+  for (let i = 26; i < prices.length; i++) {
+    ema26 = prices[i] * k26 + ema26 * (1 - k26);
+  }
+
+  // Build MACD line series (from index 26 onward where both EMAs are valid)
+  const macdLine: number[] = [];
+  let e12 = prices.slice(0, 12).reduce((a, b) => a + b, 0) / 12;
+  let e26 = prices.slice(0, 26).reduce((a, b) => a + b, 0) / 26;
+  // Process EMA12 through prices[12..25] first
+  for (let i = 12; i < 26; i++) {
+    e12 = prices[i] * k12 + e12 * (1 - k12);
+  }
+  // Now both are ready, build MACD line from index 26
+  for (let i = 26; i < prices.length; i++) {
+    e12 = prices[i] * k12 + e12 * (1 - k12);
+    e26 = prices[i] * k26 + e26 * (1 - k26);
+    macdLine.push(e12 - e26);
+  }
+
   if (macdLine.length < 9) return { line: macdLine[macdLine.length - 1] ?? 0, signal: 0, histogram: 0 };
+
+  // Signal line: 9-period EMA of MACD line
   const k9 = 2 / 10;
   let signal = macdLine.slice(0, 9).reduce((a, b) => a + b, 0) / 9;
   for (let i = 9; i < macdLine.length; i++) {
