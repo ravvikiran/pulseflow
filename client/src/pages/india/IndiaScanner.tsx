@@ -36,19 +36,25 @@ type Timeframe = typeof TIMEFRAMES[number]["value"];
 
 function ScanResultCard({ result, currency = "INR" }: {
   result: {
-    symbol: string; name: string; sector: string; price: number; changePct: number;
-    volume: number; volumeRatio: number; qualityScore: number; confidence: "high" | "medium" | "low";
-    signals: string[]; details: { ema20?: number; ema50?: number; ema200?: number; rsi?: number; volumeConfirmed: boolean; trendAligned: boolean };
+    symbol: string; name: string; sector: string; price: number;
+    changePct?: number; changePercent?: number;
+    volume: number; volumeRatio?: number; qualityScore: number;
+    confidence: "high" | "medium" | "low" | string;
+    signals: string[];
+    details?: { ema20?: number; ema50?: number; ema200?: number; rsi?: number; volumeConfirmed?: boolean; trendAligned?: boolean };
   };
   currency?: string;
 }) {
-  const isPositive = result.changePct >= 0;
+  const changePct = result.changePct ?? result.changePercent ?? 0;
+  const isPositive = changePct >= 0;
   const fmtPrice = (p: number) => currency === "INR"
     ? `₹${p.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`
     : `$${p.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
 
-  const emaAlignment = result.details.ema20 && result.details.ema50
-    ? (result.price > result.details.ema20 && result.details.ema20 > result.details.ema50 ? "bullish" : result.price < result.details.ema20 ? "bearish" : "neutral")
+  const ema20 = result.details?.ema20;
+  const ema50 = result.details?.ema50;
+  const emaAlignment = ema20 && ema50
+    ? (result.price > ema20 && ema20 > ema50 ? "bullish" : result.price < ema20 ? "bearish" : "neutral")
     : "neutral";
 
   const confidenceColor = result.confidence === "high" ? "text-bull" : result.confidence === "medium" ? "text-[oklch(0.65_0.12_80)]" : "text-muted-foreground";
@@ -68,7 +74,7 @@ function ScanResultCard({ result, currency = "INR" }: {
         <div className="text-right shrink-0">
           <div className="text-sm font-bold font-mono tabular-nums text-foreground">{fmtPrice(result.price)}</div>
           <div className={cn("text-[10px] font-semibold tabular-nums", isPositive ? "text-bull" : "text-bear")}>
-            {isPositive ? "+" : ""}{result.changePct.toFixed(2)}%
+            {isPositive ? "+" : ""}{changePct.toFixed(2)}%
           </div>
         </div>
       </div>
@@ -78,7 +84,7 @@ function ScanResultCard({ result, currency = "INR" }: {
         {result.signals.slice(0, 3).map(sig => (
           <span key={sig} className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{sig}</span>
         ))}
-        {result.details.volumeConfirmed && (
+        {result.details?.volumeConfirmed && (
           <span className="text-[9px] px-1.5 py-0.5 rounded bg-bull/10 text-bull font-medium">Vol ✓</span>
         )}
       </div>
@@ -87,7 +93,7 @@ function ScanResultCard({ result, currency = "INR" }: {
       <div className="grid grid-cols-3 gap-1 text-[9px]">
         <div className="bg-surface-2 rounded p-1 text-center">
           <div className="text-muted-foreground">Vol Ratio</div>
-          <div className={cn("font-bold tabular-nums", result.volumeRatio >= 2 ? "text-bull" : "text-foreground")}>{result.volumeRatio.toFixed(1)}x</div>
+          <div className={cn("font-bold tabular-nums", (result.volumeRatio ?? 0) >= 2 ? "text-bull" : "text-foreground")}>{(result.volumeRatio ?? 1).toFixed(1)}x</div>
         </div>
         <div className="bg-surface-2 rounded p-1 text-center">
           <div className="text-muted-foreground">EMA</div>

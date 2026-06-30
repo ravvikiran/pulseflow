@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createChart, type IChartApi, type ISeriesApi, ColorType, CrosshairMode } from "lightweight-charts";
+import { createChart, type IChartApi, ColorType, CrosshairMode, CandlestickSeries, LineSeries, HistogramSeries } from "lightweight-charts";
 
 interface CandleData {
   timestamp: string | Date;
@@ -81,7 +81,7 @@ export default function TradingViewChart({
     );
 
     // Candlestick series
-    const candleSeries = chart.addCandlestickSeries({
+    const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: "#10b981",
       downColor: "#ef4444",
       borderUpColor: "#10b981",
@@ -101,7 +101,7 @@ export default function TradingViewChart({
 
     // EMA overlays
     if (ema20 && ema20.length > 0) {
-      const ema20Series = chart.addLineSeries({
+      const ema20Series = chart.addSeries(LineSeries, {
         color: "#f59e0b",
         lineWidth: 1,
         priceLineVisible: false,
@@ -116,7 +116,7 @@ export default function TradingViewChart({
     }
 
     if (ema50 && ema50.length > 0) {
-      const ema50Series = chart.addLineSeries({
+      const ema50Series = chart.addSeries(LineSeries, {
         color: "#3b82f6",
         lineWidth: 1,
         priceLineVisible: false,
@@ -131,7 +131,7 @@ export default function TradingViewChart({
     }
 
     if (ema200 && ema200.length > 0) {
-      const ema200Series = chart.addLineSeries({
+      const ema200Series = chart.addSeries(LineSeries, {
         color: "#8b5cf6",
         lineWidth: 1,
         priceLineVisible: false,
@@ -147,7 +147,7 @@ export default function TradingViewChart({
 
     // Volume histogram
     if (showVolume) {
-      const volumeSeries = chart.addHistogramSeries({
+      const volumeSeries = chart.addSeries(HistogramSeries, {
         color: "#6366f1",
         priceFormat: { type: "volume" },
         priceScaleId: "volume",

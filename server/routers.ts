@@ -38,21 +38,21 @@ const INDIA_SECTORS = [
 const CRYPTO_SECTORS = ["Cryptocurrency"];
 
 const US_SECTORS = [
-  "US Technology", "US Financials", "US Healthcare", "US Energy",
-  "US Consumer Discretionary", "US Industrials",
+  "Technology", "Financials", "Healthcare", "Energy",
+  "Consumer Discretionary", "Consumer Staples", "Industrials", "Communication Services",
 ];
 
 const US_STOCKS = [
-  { symbol: "AAPL", name: "Apple Inc.", sector: "US Technology", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "MSFT", name: "Microsoft Corp.", sector: "US Technology", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "GOOGL", name: "Alphabet Inc.", sector: "US Technology", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "AMZN", name: "Amazon.com Inc.", sector: "US Consumer Discretionary", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "NVDA", name: "NVIDIA Corp.", sector: "US Technology", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "META", name: "Meta Platforms", sector: "US Technology", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "TSLA", name: "Tesla Inc.", sector: "US Consumer Discretionary", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "JPM", name: "JPMorgan Chase", sector: "US Financials", exchange: "NYSE", currency: "USD" },
-  { symbol: "JNJ", name: "Johnson & Johnson", sector: "US Healthcare", exchange: "NYSE", currency: "USD" },
-  { symbol: "XOM", name: "Exxon Mobil", sector: "US Energy", exchange: "NYSE", currency: "USD" },
+  { symbol: "AAPL", name: "Apple Inc.", sector: "Technology", exchange: "NASDAQ", currency: "USD" },
+  { symbol: "MSFT", name: "Microsoft Corp.", sector: "Technology", exchange: "NASDAQ", currency: "USD" },
+  { symbol: "GOOGL", name: "Alphabet Inc.", sector: "Technology", exchange: "NASDAQ", currency: "USD" },
+  { symbol: "AMZN", name: "Amazon.com Inc.", sector: "Consumer Discretionary", exchange: "NASDAQ", currency: "USD" },
+  { symbol: "NVDA", name: "NVIDIA Corp.", sector: "Technology", exchange: "NASDAQ", currency: "USD" },
+  { symbol: "META", name: "Meta Platforms", sector: "Technology", exchange: "NASDAQ", currency: "USD" },
+  { symbol: "TSLA", name: "Tesla Inc.", sector: "Consumer Discretionary", exchange: "NASDAQ", currency: "USD" },
+  { symbol: "JPM", name: "JPMorgan Chase", sector: "Financials", exchange: "NYSE", currency: "USD" },
+  { symbol: "JNJ", name: "Johnson & Johnson", sector: "Healthcare", exchange: "NYSE", currency: "USD" },
+  { symbol: "XOM", name: "Exxon Mobil", sector: "Energy", exchange: "NYSE", currency: "USD" },
 ];
 
 const US_INDICES = [

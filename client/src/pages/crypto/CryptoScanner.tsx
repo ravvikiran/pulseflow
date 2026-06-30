@@ -97,7 +97,7 @@ function ResultRow({ result, index }: { result: any; index: number }) {
               { label: "EMA 20", value: `$${fmt(result.details?.ema20)}` },
               { label: "EMA 50", value: `$${fmt(result.details?.ema50)}` },
               { label: "EMA 200", value: `$${fmt(result.details?.ema200)}` },
-              { label: "Volume Ratio", value: `${fmt(result.volumeRatio)}x` },
+              { label: "Volume Ratio", value: `${fmt(result.volumeRatio ?? 0)}x` },
               { label: "RSI", value: fmt(result.details?.rsi, 1) },
               { label: "Rel. Strength", value: fmt(result.details?.relStrength) },
               { label: "Vol Confirmed", value: result.details?.volumeConfirmed ? "Yes ✓" : "No" },

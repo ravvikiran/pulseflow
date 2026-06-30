@@ -286,10 +286,16 @@ export async function getHistory(
     setCache(historyCache, cacheKey, candles);
     return candles;
   } catch (error) {
-    console.warn(`[Yahoo] History failed for ${symbol} (${yahooTicker}):`, (error as Error).message);
+    // Only warn once per symbol to avoid console spam
+    if (!historyFailedSet.has(symbol)) {
+      historyFailedSet.add(symbol);
+      console.warn(`[Yahoo] History unavailable for ${symbol} (${yahooTicker})`);
+    }
     return [];
   }
 }
+
+const historyFailedSet = new Set<string>();
 
 function getStartDate(period: string): Date {
   const now = new Date();
