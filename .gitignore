@@ -111,3 +111,8 @@ temp/
 
 # Auto-generated files
 .project-config.json
+.manus-logs/
+
+# Backup and archive files
+*.bak
+*.zip

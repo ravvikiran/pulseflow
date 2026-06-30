@@ -1,20 +1,19 @@
 # PulseFlow — Multi-Market Intelligence Dashboard
 
-PulseFlow is a real-time financial market intelligence platform that provides technical analysis, scanning, and monitoring across three market domains: Indian Stock Market (NSE), Cryptocurrency, and US Equities.
+A real-time financial market intelligence platform providing technical analysis, scanning, and monitoring across Indian Stock Market (NSE), Cryptocurrency, and US Equities — powered by live Yahoo Finance data.
 
 ---
 
-## What It Does
+## Features
 
-- **Multi-market monitoring** — Track 50 NSE stocks, 30 crypto assets, and 25 US stocks from a single dashboard
-- **Technical scanning** — EMA alignment, volume spikes, 52-week breakouts, ATH breakouts, momentum continuation, relative strength
-- **Chart pattern detection** — 14 pattern types (triangles, flags, head & shoulders, cup & handle, double top/bottom, etc.)
-- **Sector rotation analysis** — Rank sectors by momentum, strength, volume, and inflow/outflow
-- **Custom watchlists** — Create and manage watchlists across all markets
-- **Alert system** — Set alerts for EMA crossovers, volume spikes, breakouts, sector shifts, price targets
-- **In-app notifications** — Real-time notification center with 7 categories and severity levels
-- **Historical analysis** — Sentiment trends, sector rotation history, scanner result archives
-- **User settings** — Full preferences panel (theme, timeframes, alert config, scanner presets)
+- **Live market data** — Real prices via Yahoo Finance (15-min delayed for stocks, near real-time for crypto)
+- **Technical scanner** — EMA alignment, volume spikes, 52-week breakouts, momentum, relative strength
+- **TradingView charts** — Professional candlestick charts with EMA overlays and volume (lightweight-charts)
+- **Sector rotation** — Real sector performance calculated from constituent stock changes
+- **14 chart patterns** — Triangles, flags, H&S, cup & handle, double tops/bottoms, breakouts
+- **Multi-market** — 50 NSE stocks, 30 crypto, 25 US stocks, 15 indices
+- **Watchlists & alerts** — Custom tracking with EMA/volume/breakout alerts
+- **Notification center** — 7 categories, severity-based routing
 
 ---
 
@@ -22,15 +21,13 @@ PulseFlow is a real-time financial market intelligence platform that provides te
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React 19, Tailwind CSS 4, Wouter, Recharts, Framer Motion |
-| UI Components | shadcn/ui (Radix primitives), Lucide icons |
-| State/Data | TanStack React Query + tRPC React hooks |
-| API Layer | tRPC 11 (type-safe RPC over Express) |
-| Server | Express 4, Node.js (ESM) |
-| Database | MySQL/TiDB via Drizzle ORM |
+| Frontend | React 19, Tailwind CSS 4, Wouter, lightweight-charts, Recharts |
+| UI | shadcn/ui (Radix primitives), Lucide icons, Framer Motion |
+| API | tRPC 11 (type-safe, end-to-end) over Express 4 |
+| Data | Yahoo Finance (`yahoo-finance2` v3) |
+| Database | MySQL via Drizzle ORM (optional — works without) |
 | Auth | JWT session cookies |
-| Build | Vite 7 (client), esbuild (server), pnpm |
-| Testing | Vitest |
+| Build | Vite 7 + esbuild, pnpm |
 
 ---
 
@@ -38,290 +35,125 @@ PulseFlow is a real-time financial market intelligence platform that provides te
 
 ### Prerequisites
 
-- **Node.js 20+** — [Download](https://nodejs.org/)
-- **pnpm** — This project uses pnpm (not npm). Install it globally:
-  ```bash
-  npm install -g pnpm
-  ```
-- **MySQL database** (optional) — Only needed for persistence features (watchlists, alerts, settings). Without it, the app runs fully with simulated in-memory data.
+- **Node.js 20+**
+- **pnpm** (required — `npm install -g pnpm`)
+- **MySQL** (optional — app works fully without database using live Yahoo data)
 
 ### Setup
 
 ```bash
-# 1. Install dependencies (MUST use pnpm, not npm)
+# Install dependencies (MUST use pnpm, not npm)
 pnpm install
 
-# 2. Create environment file (optional — app works without it)
+# Create env file (optional)
 cp .env.example .env
 
-# 3. (Optional) If you have a MySQL database, update DATABASE_URL in .env
-#    Then push the schema:
-pnpm db:push
-```
-
-### Run in Development
-
-```bash
+# Start dev server
 pnpm dev
 ```
 
-The app starts at `http://localhost:3000` with both frontend (Vite HMR) and backend (Express/tRPC) on the same port. If port 3000 is busy, it auto-finds the next available port.
+Open `http://localhost:3000`. Both frontend and backend run on the same port.
 
-### Build for Production
-
-```bash
-pnpm build
-pnpm start
-```
-
-### Run Tests
+### Scripts
 
 ```bash
-pnpm test
+pnpm dev        # Dev server with hot reload
+pnpm build      # Production build
+pnpm start      # Run production
+pnpm test       # Vitest suite
+pnpm check      # TypeScript check
+pnpm db:push    # Push DB schema (if using MySQL)
 ```
 
-### Important: Why pnpm?
+### Important: Use pnpm
 
-This project **requires pnpm** due to:
-- Workspace-specific dependency overrides in `package.json`
-- Strict peer dependency resolution that npm cannot handle
-- The lockfile format (`pnpm-lock.yaml`)
-
-If you try `npm install` you'll get `ERESOLVE` peer dependency errors. Always use `pnpm install`.
-
-### Troubleshooting
-
-| Problem | Solution |
-|---------|----------|
-| `npm install` fails with ERESOLVE | Use `pnpm install` instead |
-| Port 3000 in use | The server auto-picks the next available port, or set `PORT=3001` in `.env` |
-| Database not available | The app works without a database — all features use simulated data |
+This project **requires pnpm**. Using `npm install` will fail with peer dependency errors.
 
 ---
 
 ## Project Structure
 
 ```
-pulseflow/
-├── client/                       # Frontend (React SPA)
-│   ├── src/
-│   │   ├── App.tsx              # Route definitions
-│   │   ├── main.tsx             # tRPC/QueryClient providers
-│   │   ├── components/          # Layout, shared components, ui/
-│   │   │   ├── PulseFlowLayout.tsx   # Main sidebar layout
-│   │   │   ├── NotificationCenter.tsx # Bell + dropdown
-│   │   │   ├── shared/          # Reusable widgets (AssetTable, SectorHeatmap, StatCard)
-│   │   │   └── ui/             # shadcn/ui primitives (50+ components)
-│   │   ├── pages/              # Feature pages
-│   │   │   ├── HomeDashboard.tsx     # Global overview
-│   │   │   ├── india/          # NSE Dashboard, Sectors, Scanner
-│   │   │   ├── crypto/         # Crypto Dashboard, Scanner
-│   │   │   ├── us/             # US Dashboard (future-ready)
-│   │   │   ├── settings/       # 7-section settings panel
-│   │   │   ├── Assets.tsx      # Asset tracker + detail
-│   │   │   ├── Watchlists.tsx  # Watchlist management
-│   │   │   ├── Alerts.tsx      # Alert rules
-│   │   │   ├── Historical.tsx  # Historical analysis
-│   │   │   ├── PatternScanner.tsx # Chart pattern scanner
-│   │   │   └── Notifications.tsx  # Full notification history
-│   │   ├── lib/trpc.ts         # tRPC client binding
-│   │   └── contexts/           # ThemeContext
-│   └── index.html
-├── server/                       # Backend
-│   ├── _core/                   # Framework plumbing (auth, OAuth, Vite bridge)
-│   ├── routers.ts               # Main tRPC router (all procedures)
-│   ├── routers/                 # Sub-routers
-│   │   ├── settings.ts         # User preferences & scanner presets
-│   │   └── notifications.ts    # Notification CRUD
-│   ├── db.ts                    # Database query helpers
-│   ├── marketEngine.ts          # Price generation, EMA/RSI, sector performance
-│   ├── scannerEngine.ts         # Improved scanner (quality scoring, cooldowns)
-│   ├── patternEngine.ts         # 14 chart pattern detectors
-│   ├── assetRegistry.ts         # Asset registries (NSE/Crypto/US) + validation
-│   └── scheduledJobs.ts         # Cron handlers (market refresh, alerts)
-├── drizzle/                      # Database schema (16 tables)
-│   └── schema.ts
-├── shared/                       # Shared types & constants
-└── package.json
+client/src/
+├── App.tsx                    # Routes
+├── components/
+│   ├── PulseFlowLayout.tsx   # Sidebar layout
+│   ├── NotificationCenter.tsx
+│   └── shared/TradingViewChart.tsx  # Candlestick chart
+├── pages/
+│   ├── HomeDashboard.tsx     # Global overview
+│   ├── india/                # NSE Dashboard, Sectors, Scanner
+│   ├── crypto/               # Crypto Dashboard, Scanner
+│   ├── us/                   # US Dashboard
+│   ├── Assets.tsx            # Asset detail + chart
+│   ├── PatternScanner.tsx    # Chart patterns
+│   └── settings/             # User preferences
+server/
+├── _core/                    # Express server, tRPC setup, auth
+├── routers.ts                # All tRPC procedures
+├── dataProvider.ts           # Yahoo Finance + fallback logic
+├── yahooFinance.ts           # Yahoo API wrapper with caching
+├── marketEngine.ts           # Simulated data (fallback)
+├── scannerEngine.ts          # Synthetic scanner (for cron jobs)
+├── patternEngine.ts          # 14 chart pattern detectors
+├── assetRegistry.ts          # 120+ assets (NSE/Crypto/US)
+└── scheduledJobs.ts          # Background refresh handlers
+drizzle/schema.ts             # 16 database tables
 ```
-
----
-
-## Routes & Navigation
-
-| Route | Page | Auth Required |
-|-------|------|:---:|
-| `/` | Home Dashboard (global market overview) | No |
-| `/india` | NSE Market Dashboard | No |
-| `/india/sectors` | Sector Rotation Engine | No |
-| `/india/scanner` | NSE Market Scanner | No |
-| `/crypto` | Crypto Market Dashboard | No |
-| `/crypto/scanner` | Crypto Scanner | No |
-| `/us` | US Market Dashboard (future-ready) | No |
-| `/assets` | Asset Tracker | No |
-| `/assets/:symbol` | Asset Detail (chart + indicators) | No |
-| `/patterns` | Chart Pattern Scanner | No |
-| `/watchlists` | Watchlist Management | Yes |
-| `/alerts` | Alert Rules | Yes |
-| `/notifications` | Notification History | Yes |
-| `/historical` | Historical Analysis | No |
-| `/settings` | User Preferences | Yes |
-| `/profile` | User Profile | Yes |
-
----
-
-## API Structure (tRPC)
-
-All API calls go through `/api/trpc` using tRPC's type-safe RPC protocol.
-
-### Public Procedures (no auth required)
-- `global.overview` — Cross-market summary (India, Crypto, US)
-- `global.patterns` — Cross-market pattern scanner
-- `global.validateRegistry` — Asset registry integrity audit
-- `india.dashboard` — NSE dashboard data
-- `india.sectorHeatmap` / `india.sectorRotation` / `india.sectorDetail`
-- `india.scanner` — NSE scanner (improved accuracy engine)
-- `india.patterns` — NSE pattern scanner
-- `india.stocks` / `india.indices` / `india.sentimentHistory`
-- `crypto.dashboard` — Crypto dashboard data
-- `crypto.heatmap` / `crypto.scanner` / `crypto.patterns`
-- `crypto.assets` / `crypto.btcDominanceHistory` / `crypto.fearGreedHistory`
-- `us.dashboard` / `us.sectorHeatmap` / `us.scanner` / `us.stocks` / `us.indices`
-- `assets.search` / `assets.detail` / `assets.ohlcv` / `assets.compare`
-- `historical.*` — Sector rotation, sentiment, performance history
-
-### Protected Procedures (auth required)
-- `watchlists.*` — CRUD for watchlists and items
-- `alerts.*` — CRUD for alerts, unread count, history
-- `settings.getPreferences` / `settings.updatePreferences`
-- `settings.getScannerPresets` / `settings.createScannerPreset` / etc.
-- `notifications.*` — List, mark read, dismiss, seed demo
-- `india.favoriteSectors` / `india.savedScans`
-- `crypto.savedScans`
-- `global.recentAlerts`
-
----
-
-## Database Schema (16 Tables)
-
-| Table | Purpose |
-|-------|---------|
-| `users` | OAuth users with role (admin/user) |
-| `assets` | Symbol registry (stock/crypto/index) |
-| `market_data` | OHLCV candles per asset/timeframe |
-| `technical_indicators` | EMA, RSI, MACD, ATR, 52W high/low |
-| `sector_performance` | Sector scoring (momentum, strength, volume) |
-| `market_sentiment` | Sentiment score, advance/decline, fear/greed |
-| `watchlists` | User watchlists |
-| `watchlist_items` | Assets in watchlists |
-| `favorite_sectors` | User's favorited sectors |
-| `saved_scans` | Saved scanner configurations |
-| `alerts` | Alert rules |
-| `alert_history` | Alert trigger history |
-| `scanner_results` | Persisted scanner output |
-| `user_preferences` | Full user settings |
-| `scanner_presets` | Named scanner parameter presets |
-| `notifications` | In-app notification system |
-| `historical_snapshots` | Time-series snapshots |
 
 ---
 
 ## Market Data
 
-PulseFlow currently uses a **simulation engine** for market data. All prices, indicators, and scanner results are generated algorithmically using seeded random functions for deterministic, realistic-looking data.
+All price data comes from **Yahoo Finance** (free, no API key needed):
 
-This design allows the full application to run without external API dependencies. The simulation engine can be replaced with real market data APIs (NSE, Binance, Alpha Vantage, etc.) by swapping the implementations in `marketEngine.ts` and `scannerEngine.ts`.
+| Market | Delay | Coverage |
+|--------|-------|----------|
+| NSE India | ~15 min | 50 stocks (NIFTY50 + midcaps) |
+| Crypto | ~1-2 min | 30 assets (BTC, ETH, SOL, etc.) |
+| US | ~15 min | 25 stocks (FAANG, financials, etc.) |
+| Indices | ~15 min | NIFTY50, SENSEX, S&P500, NASDAQ, etc. |
 
-### Asset Coverage
-
-- **India (NSE):** 50 stocks across 11 sectors (IT, Banking, Pharma, FMCG, Metals, Auto, etc.)
-- **Crypto:** 30 assets (BTC, ETH, SOL, Layer 1/2, DeFi, Meme, Gaming, Privacy)
-- **US:** 25 stocks (Tech, Finance, Healthcare, Energy, Consumer, Industrial)
-- **Indices:** 15 (NIFTY50, SENSEX, S&P 500, NASDAQ 100, etc.)
-
----
-
-## Background Jobs (Cron Endpoints)
-
-These endpoints are called by the platform's cron scheduler:
-
-| Endpoint | Frequency | Purpose |
-|----------|-----------|---------|
-| `POST /api/scheduled/market-data-refresh` | Every 15 min | Refresh OHLCV data for all assets |
-| `POST /api/scheduled/sector-scoring` | Every 30 min | Recalculate sector performance scores |
-| `POST /api/scheduled/sentiment-update` | Every 30 min | Update market sentiment indicators |
-| `POST /api/scheduled/scanner-processing` | Every hour | Run all scanner types, persist results |
-| `POST /api/scheduled/alert-evaluation` | Every 15 min | Evaluate active alerts, trigger notifications |
-
-All cron endpoints are optionally protected with an API key (`CRON_API_KEY` env var).
+Data is cached for 60 seconds to avoid rate limits. Historical charts show 1 year of daily candles.
 
 ---
 
-## Scanner Engine
+## Scanner Logic
 
-The scanner uses a multi-factor quality scoring system (0-100) with:
+Uses a **Gate + Scoring** model:
 
-- **Volume confirmation** — Current volume vs 20-day average
-- **RSI zone validation** — Appropriate RSI range per scan type
-- **EMA alignment** — Price position relative to EMA 20/50/200
-- **Trend alignment** — Confirming the broader trend direction
-- **Cooldown logic** — Prevents signal flooding (15-min cooldown per symbol)
-- **Deduplication** — Same signal within cooldown window is skipped
+| Scan Type | Gate (must-pass) | Scoring Factors |
+|-----------|-----------------|-----------------|
+| EMA Alignment | Price > EMA20 > EMA50 | +EMA200, +MACD, +RSI zone, +volume, +fresh crossover |
+| Volume Spike | Vol ≥ 2x avg + move > 0.5% | +magnitude, +direction, +trend context |
+| 52W Breakout | Within 5% of 52W high | +proximity, +volume, +RSI, +MACD |
+| Momentum | 5d return > 1.5% + above EMA20 | +20d return, +MACD, +volume, +EMA50 |
+| Relative Strength | 30d return > 3% + above EMA50 | +60d return, +EMA structure, +MACD |
 
-### Scan Types
+Confidence levels: **High (80+)**, **Medium (60-79)**, **Low (40-59)**
 
-| Type | Description |
-|------|-------------|
-| EMA Alignment | Price > EMA20 > EMA50 > EMA200 (bullish stack) |
-| Volume Spike | Current volume > Nx 20-day average with price movement |
-| 52-Week Breakout | Price breaking above 52-week high with volume |
-| ATH Breakout | Price at all-time high with strong volume |
-| Momentum Continuation | 3/5 green candles + positive 20-day return + RSI 50-80 |
-| Relative Strength | Outperforming benchmark by 5%+ over 63 days |
-
----
-
-## Pattern Scanner
-
-Detects 14 chart patterns with confidence scoring:
-
-Ascending Triangle, Descending Triangle, Symmetrical Triangle, Bull Flag, Bear Flag, Cup and Handle, Double Top, Double Bottom, Head and Shoulders, Inverse Head and Shoulders, Breakout Consolidation, Support/Resistance Breakout, Channel Breakout, Trendline Breakout
-
-Each pattern result includes: confidence score, volume confirmation, breakout level, stop loss zone, and target level.
+Indicators used: Wilder's RSI(14), MACD(12,26,9), EMA(20/50/200), ATR(14), Volume Ratio
 
 ---
 
 ## Environment Variables
 
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` | MySQL connection string (optional — app works without it) |
-| `JWT_SECRET` | Session cookie signing secret |
-| `PORT` | Server port (default: 3000) |
-| `CRON_API_KEY` | Optional API key to protect scheduled job endpoints |
-
----
-
-## Scripts
-
 ```bash
-pnpm dev        # Start dev server (hot reload)
-pnpm build      # Build for production
-pnpm start      # Run production build
-pnpm test       # Run Vitest test suite
-pnpm check      # TypeScript type check
-pnpm format     # Prettier formatting
-pnpm db:push    # Generate + apply DB migrations
+DATABASE_URL=mysql://user:pass@host:3306/db  # Optional
+JWT_SECRET=any-random-string                  # For session auth
+PORT=3000                                     # Server port
+USE_SIMULATED_DATA=true                       # Force offline mode
+CRON_API_KEY=                                 # Protect cron endpoints
 ```
 
 ---
 
-## Future Enhancements
+## Troubleshooting
 
-- Real market data API integration (replace simulation with live feeds)
-- Email/Telegram alert delivery
-- Push notifications for mobile
-- Portfolio P&L tracking
-- Advanced charting with lightweight-charts library
-- News feed integration
-- CSV export for watchlists and scanner results
+| Problem | Solution |
+|---------|----------|
+| `npm install` fails | Use `pnpm install` |
+| Scanner shows no results | Normal on quiet market days — relaxed gates show 5-15 results typically |
+| Yahoo errors for some symbols | Demerged/restructured tickers (e.g., TATAMOTORS) — falls back to simulated |
+| Charts not loading | Check browser console — ensure `lightweight-charts` loaded correctly |
+| Sector heatmap shows zeros | Sector names must match `assetRegistry.ts` exactly |
