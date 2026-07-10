@@ -554,3 +554,56 @@ function atrCalc(candles: Array<{ high: number; low: number; close: number }>, p
   }
   return atr;
 }
+
+// ─── Real Pattern Scanner ─────────────────────────────────────────────────────
+
+import { type PatternResult, type PatternScanOptions, scanAssetForPatterns } from "./patternEngine";
+
+/**
+ * Run pattern scanner on real Yahoo Finance data.
+ * Fetches 3-month history and runs pattern detection on actual candles.
+ */
+export async function runRealPatternScanner(
+  assets: Array<{ symbol: string; basePrice?: number; sector?: string | null }>,
+  options: PatternScanOptions = {}
+): Promise<PatternResult[]> {
+  const { minConfidence = 50, maxResultsPerAsset = 2 } = options;
+  const allResults: PatternResult[] = [];
+
+  // Limit to 20 assets to avoid excessive API calls
+  const limitedAssets = assets.slice(0, 20);
+
+  for (const asset of limitedAssets) {
+    try {
+      const candles = await getHistory(asset.symbol, "3mo", "1d");
+      if (!candles || candles.length < 20) continue;
+
+      // Convert to the format the pattern engine expects
+      const patternCandles = candles.map(c => ({
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume,
+        timestamp: new Date(c.timestamp).getTime(),
+      }));
+
+      // Import pattern detectors and run on real data
+      const { detectPatternsOnCandles } = await import("./patternEngine");
+      const results = detectPatternsOnCandles(patternCandles, asset.symbol, options);
+
+      for (const r of results) {
+        if (r.confidenceScore >= minConfidence) {
+          allResults.push(r);
+        }
+      }
+    } catch {
+      // Skip assets that fail
+      continue;
+    }
+  }
+
+  return allResults
+    .sort((a, b) => b.confidenceScore - a.confidenceScore)
+    .slice(0, 30);
+}

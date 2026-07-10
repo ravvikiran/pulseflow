@@ -889,3 +889,48 @@ export const PATTERN_NAMES: Record<PatternType, string> = {
   channel_breakout: "Channel Breakout",
   trendline_breakout: "Trendline Breakout",
 };
+
+/**
+ * Detect patterns on REAL candle data (not synthetic).
+ * Used by the dataProvider to run patterns on Yahoo Finance history.
+ */
+export function detectPatternsOnCandles(
+  candles: Candle[],
+  symbol: string,
+  options: PatternScanOptions = {}
+): PatternResult[] {
+  const {
+    minConfidence = 50,
+    requireVolumeConfirmation = false,
+    filterFalseBreakouts = true,
+    maxResultsPerAsset = 3,
+  } = options;
+
+  const results: PatternResult[] = [];
+  const timeframe: Timeframe = "1d"; // Real data is always daily from Yahoo
+
+  for (const detector of ALL_DETECTORS) {
+    try {
+      const result = detector(candles, symbol, timeframe);
+      if (!result) continue;
+      if (result.confidenceScore < minConfidence) continue;
+      if (requireVolumeConfirmation && !result.volumeConfirmed) continue;
+      if (filterFalseBreakouts && result.isFalseBreakout) continue;
+      results.push(result);
+    } catch {
+      // Skip failed detectors
+    }
+  }
+
+  // Deduplicate and limit
+  const seen = new Set<string>();
+  return results
+    .sort((a, b) => b.confidenceScore - a.confidenceScore)
+    .filter(r => {
+      const key = r.patternType;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, maxResultsPerAsset);
+}

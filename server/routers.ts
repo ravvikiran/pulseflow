@@ -25,7 +25,7 @@ import {
 import { runImprovedScanner, type ScanType as ImprovedScanType, type Timeframe as ImprovedTimeframe } from "./scannerEngine";
 import { runPatternScanner, PATTERN_NAMES, type PatternResult } from "./patternEngine";
 import { runDataValidation, NSE_REGISTRY, CRYPTO_REGISTRY, US_REGISTRY } from "./assetRegistry";
-import { getCurrentPrice, getCurrentPrices, getAssetDetailData, getRealSectorPerformance, runRealScanner } from "./dataProvider";
+import { getCurrentPrice, getCurrentPrices, getAssetDetailData, getRealSectorPerformance, runRealScanner, getHistoricalCandles, runRealPatternScanner } from "./dataProvider";
 
 // ─── Domain Constants ─────────────────────────────────────────────────────────
 
@@ -82,7 +82,24 @@ const PATTERN_TIMEFRAMES = z.enum(["15m", "1h", "4h", "1d", "1w"]);
 const globalRouter = router({
   // Summary of all three market domains for the Home Dashboard
   overview: publicProcedure.query(async () => {
-    const indiaSentiment = generateMarketSentiment();
+    // Calculate real sentiment from actual stock price changes
+    const allNseSymbols = NSE_REGISTRY.map(a => a.symbol);
+    const nsePrices = await getCurrentPrices(allNseSymbols);
+    let advanceCount = 0, declineCount = 0, unchangedCount = 0;
+    for (const [, p] of nsePrices) {
+      if (p.changePercent > 0.1) advanceCount++;
+      else if (p.changePercent < -0.1) declineCount++;
+      else unchangedCount++;
+    }
+    const adRatio = declineCount > 0 ? advanceCount / declineCount : advanceCount > 0 ? 5 : 1;
+    const sentimentScore = Math.round(((adRatio - 1) / 2) * 50);
+    const marketState = sentimentScore > 15 ? "bullish" : sentimentScore < -15 ? "bearish" : "neutral";
+    const indiaSentiment = {
+      sentimentScore, marketState, advanceCount, declineCount, unchangedCount,
+      advanceDeclineRatio: Math.round(adRatio * 100) / 100,
+      breadthScore: Math.round((advanceCount / Math.max(1, advanceCount + declineCount)) * 100),
+      volatilityIndex: 0, btcDominance: 0, totalMarketCap: 0, fearGreedIndex: 0,
+    };
     const cryptoSentiment = {
       sentimentScore: Math.round((Math.sin(Date.now() / 3600000 * 0.7) * 35 + 10) * 100) / 100,
       marketState: "neutral" as const,
@@ -147,7 +164,7 @@ const globalRouter = router({
       if (input.market === "india" || input.market === "all") assets.push(...NSE_REGISTRY);
       if (input.market === "crypto" || input.market === "all") assets.push(...CRYPTO_REGISTRY);
       if (input.market === "us" || input.market === "all") assets.push(...US_REGISTRY);
-      return runPatternScanner(assets, {
+      return runRealPatternScanner(assets, {
         timeframes: input.timeframes as any,
         minConfidence: input.minConfidence,
         requireVolumeConfirmation: input.requireVolumeConfirmation,
@@ -166,7 +183,25 @@ const globalRouter = router({
 const indiaRouter = router({
   // Dashboard overview — NSE stocks and Indian indices only
   dashboard: publicProcedure.query(async () => {
-    const sentiment = generateMarketSentiment();
+    // Real sentiment from actual stock advances/declines
+    const allNseSymbols = NSE_REGISTRY.map(a => a.symbol);
+    const allPrices = await getCurrentPrices(allNseSymbols);
+    let advCount = 0, decCount = 0, uncCount = 0;
+    for (const [, p] of allPrices) {
+      if (p.changePercent > 0.1) advCount++;
+      else if (p.changePercent < -0.1) decCount++;
+      else uncCount++;
+    }
+    const adR = decCount > 0 ? advCount / decCount : advCount > 0 ? 5 : 1;
+    const sentScore = Math.round(((adR - 1) / 2) * 50);
+    const sentiment = {
+      sentimentScore: sentScore,
+      marketState: (sentScore > 15 ? "bullish" : sentScore < -15 ? "bearish" : "neutral") as "bullish" | "bearish" | "neutral",
+      advanceCount: advCount, declineCount: decCount, unchangedCount: uncCount,
+      advanceDeclineRatio: Math.round(adR * 100) / 100,
+      breadthScore: Math.round((advCount / Math.max(1, advCount + decCount)) * 100),
+      volatilityIndex: 0, btcDominance: 0, totalMarketCap: 0, fearGreedIndex: 0,
+    };
     const sectorData = await getRealSectorPerformance(INDIA_SECTORS, "india");
 
     const nseSymbols = NSE_REGISTRY.map(a => a.symbol);
@@ -295,7 +330,7 @@ const indiaRouter = router({
       const assets = input.sector
         ? NSE_REGISTRY.filter(a => a.sector.toLowerCase() === input.sector!.toLowerCase())
         : NSE_REGISTRY;
-      return runPatternScanner(assets, {
+      return runRealPatternScanner(assets, {
         timeframes: input.timeframes as any,
         minConfidence: input.minConfidence,
         requireVolumeConfirmation: input.requireVolumeConfirmation,
@@ -510,7 +545,7 @@ const cryptoRouter = router({
       filterFalseBreakouts: z.boolean().default(true),
     }))
     .query(async ({ input }) => {
-      return runPatternScanner(CRYPTO_REGISTRY, {
+      return runRealPatternScanner(CRYPTO_REGISTRY, {
         timeframes: input.timeframes as any,
         minConfidence: input.minConfidence,
         requireVolumeConfirmation: input.requireVolumeConfirmation,
@@ -632,13 +667,11 @@ const usRouter = router({
       minVolumeRatio: z.number().default(2.0),
     }))
     .query(async ({ input }) => {
-      const results = runScanner(US_STOCKS, input.scanType, input.timeframe, {
+      return runRealScanner({
+        domain: "us",
+        scanType: input.scanType,
         sector: input.sector,
-        minVolumeRatio: input.minVolumeRatio,
-      });
-      return results.map(r => {
-        const asset = US_STOCKS.find(a => a.symbol === r.symbol);
-        return { ...r, ...asset };
+        maxResults: 15,
       });
     }),
 
@@ -762,22 +795,24 @@ const assetsRouter = router({
 
   ohlcv: publicProcedure
     .input(z.object({ symbol: z.string(), timeframe: z.string().default("1d"), limit: z.number().default(90) }))
-    .query(async ({ input }) => generateMarketData(input.symbol, input.limit)),
+    .query(async ({ input }) => getHistoricalCandles(input.symbol, input.limit)),
 
   compare: publicProcedure
     .input(z.object({ symbols: z.array(z.string()).min(2).max(5) }))
     .query(async ({ input }) => {
-      return input.symbols.map(symbol => {
-        const candles = generateMarketData(symbol, 30);
+      const results = [];
+      for (const symbol of input.symbols) {
+        const candles = await getHistoricalCandles(symbol, 30);
         const firstClose = candles[0]?.close ?? 1;
-        return {
+        results.push({
           symbol,
           data: candles.map(c => ({
             timestamp: c.timestamp,
             normalizedReturn: Math.round(((c.close - firstClose) / firstClose) * 10000) / 100,
           })),
-        };
-      });
+        });
+      }
+      return results;
     }),
 });
 
@@ -975,19 +1010,21 @@ const historicalRouter = router({
   performance: publicProcedure
     .input(z.object({ symbols: z.array(z.string()), days: z.number().default(30) }))
     .query(async ({ input }) => {
-      return input.symbols.map(symbol => {
-        const candles = generateMarketData(symbol, input.days);
+      const results = [];
+      for (const symbol of input.symbols) {
+        const candles = await getHistoricalCandles(symbol, input.days);
         const firstClose = candles[0]?.close ?? 1;
         const lastClose = candles[candles.length - 1]?.close ?? firstClose;
-        return {
+        results.push({
           symbol,
           totalReturn: Math.round(((lastClose - firstClose) / firstClose) * 10000) / 100,
           data: candles.map(c => ({
             timestamp: c.timestamp,
             normalizedReturn: Math.round(((c.close - firstClose) / firstClose) * 10000) / 100,
           })),
-        };
-      });
+        });
+      }
+      return results;
     }),
 
   scannerResults: publicProcedure
