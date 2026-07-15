@@ -26,7 +26,7 @@ A real-time financial market intelligence platform providing technical analysis,
 | API | tRPC 11 (type-safe, end-to-end) over Express 4 |
 | Data | Yahoo Finance (`yahoo-finance2` v3) |
 | Database | MySQL via Drizzle ORM (optional — works without) |
-| Auth | JWT session cookies |
+| Auth | No authentication required (local tool) |
 | Build | Vite 7 + esbuild, pnpm |
 
 ---
@@ -45,14 +45,11 @@ A real-time financial market intelligence platform providing technical analysis,
 # Install dependencies (MUST use pnpm, not npm)
 pnpm install
 
-# Create env file (optional)
-cp .env.example .env
-
 # Start dev server
 pnpm dev
 ```
 
-Open `http://localhost:3000`. Both frontend and backend run on the same port.
+Open `http://localhost:3000`. All features work immediately — no login required.
 
 ### Scripts
 
@@ -139,11 +136,10 @@ Indicators used: Wilder's RSI(14), MACD(12,26,9), EMA(20/50/200), ATR(14), Volum
 ## Environment Variables
 
 ```bash
-DATABASE_URL=mysql://user:pass@host:3306/db  # Optional
-JWT_SECRET=any-random-string                  # For session auth
+DATABASE_URL=mysql://user:pass@host:3306/db  # Optional — for persistence
 PORT=3000                                     # Server port
-USE_SIMULATED_DATA=true                       # Force offline mode
-CRON_API_KEY=                                 # Protect cron endpoints
+USE_SIMULATED_DATA=true                       # Force offline mode (no Yahoo calls)
+CRON_API_KEY=                                 # Protect scheduled job endpoints
 ```
 
 ---
@@ -154,6 +150,5 @@ CRON_API_KEY=                                 # Protect cron endpoints
 |---------|----------|
 | `npm install` fails | Use `pnpm install` |
 | Scanner shows no results | Normal on quiet market days — relaxed gates show 5-15 results typically |
-| Yahoo errors for some symbols | Demerged/restructured tickers (e.g., TATAMOTORS) — falls back to simulated |
-| Charts not loading | Check browser console — ensure `lightweight-charts` loaded correctly |
-| Sector heatmap shows zeros | Sector names must match `assetRegistry.ts` exactly |
+| Yahoo errors for some tickers | Demerged tickers (e.g., TATAMOTORS) — app handles gracefully |
+| Charts not loading | Refresh the page — lightweight-charts needs a clean mount |
