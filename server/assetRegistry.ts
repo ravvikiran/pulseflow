@@ -84,7 +84,6 @@ export const NSE_REGISTRY: NSEAsset[] = [
   { symbol: "SUNPHARMA", name: "Sun Pharmaceutical", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 1720 },
   { symbol: "TITAN", name: "Titan Company", sector: "Consumer Goods", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 3450 },
   { symbol: "ONGC", name: "Oil and Natural Gas Corp", sector: "Oil & Gas", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 285 },
-  { symbol: "TATAMOTORS", name: "Tata Motors", sector: "Automobiles", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 980 },
   { symbol: "POWERGRID", name: "Power Grid Corporation", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 340 },
   { symbol: "NTPC", name: "NTPC", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 380 },
   { symbol: "DRREDDY", name: "Dr. Reddy's Laboratories", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 6200 },

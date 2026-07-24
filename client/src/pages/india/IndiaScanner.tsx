@@ -92,6 +92,22 @@ function ScanResultCard({ result, currency = "INR" }: {
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-1 text-[9px]">
         <div className="bg-surface-2 rounded p-1 text-center">
+          <div className="text-muted-foreground">Stop Loss</div>
+          <div className="font-bold tabular-nums text-bear">{(result as any).stopLoss ? fmtPrice((result as any).stopLoss) : "—"}</div>
+        </div>
+        <div className="bg-surface-2 rounded p-1 text-center">
+          <div className="text-muted-foreground">Target</div>
+          <div className="font-bold tabular-nums text-bull">{(result as any).target ? fmtPrice((result as any).target) : "—"}</div>
+        </div>
+        <div className="bg-surface-2 rounded p-1 text-center">
+          <div className="text-muted-foreground">R:R</div>
+          <div className={cn("font-bold tabular-nums", result.qualityScore >= 70 ? "text-bull" : "text-foreground")}>{(result as any).riskReward ?? "—"}</div>
+        </div>
+      </div>
+
+      {/* Quality row */}
+      <div className="grid grid-cols-3 gap-1 text-[9px]">
+        <div className="bg-surface-2 rounded p-1 text-center">
           <div className="text-muted-foreground">Vol Ratio</div>
           <div className={cn("font-bold tabular-nums", (result.volumeRatio ?? 0) >= 2 ? "text-bull" : "text-foreground")}>{(result.volumeRatio ?? 1).toFixed(1)}x</div>
         </div>

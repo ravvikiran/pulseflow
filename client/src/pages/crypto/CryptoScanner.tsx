@@ -94,14 +94,14 @@ function ResultRow({ result, index }: { result: any; index: number }) {
         <div className="px-4 pb-3 bg-accent/10">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2">
             {[
-              { label: "EMA 20", value: `$${fmt(result.details?.ema20)}` },
-              { label: "EMA 50", value: `$${fmt(result.details?.ema50)}` },
-              { label: "EMA 200", value: `$${fmt(result.details?.ema200)}` },
+              { label: "Stop Loss", value: result.stopLoss ? `$${fmt(result.stopLoss)}` : "—" },
+              { label: "Target", value: result.target ? `$${fmt(result.target)}` : "—" },
+              { label: "Risk:Reward", value: result.riskReward ?? "—" },
               { label: "Volume Ratio", value: `${fmt(result.volumeRatio ?? 0)}x` },
               { label: "RSI", value: fmt(result.details?.rsi, 1) },
-              { label: "Rel. Strength", value: fmt(result.details?.relStrength) },
-              { label: "Vol Confirmed", value: result.details?.volumeConfirmed ? "Yes ✓" : "No" },
-              { label: "Trend Aligned", value: result.details?.trendAligned ? "Yes ✓" : "No" },
+              { label: "Quality", value: `${result.qualityScore}/100` },
+              { label: "Confidence", value: (result.confidence ?? "low").toUpperCase() },
+              { label: "Trend Aligned", value: result.details?.trendAligned ? "Yes ✓" : "—" },
             ].map(({ label, value }) => (
               <div key={label} className="bg-card rounded p-2">
                 <div className="text-[9px] text-muted-foreground uppercase tracking-wider">{label}</div>

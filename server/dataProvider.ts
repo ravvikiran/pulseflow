@@ -202,6 +202,7 @@ export async function runRealScanner(options: {
   price: number; changePercent: number; volume: number;
   qualityScore: number; confidence: string; signals: string[];
   marketDomain: string; scanType: string;
+  stopLoss: number; target: number; riskReward: string;
 }>> {
   const { domain, scanType, sector, maxResults = 15 } = options;
   const registry = domain === "india" ? NSE_REGISTRY : domain === "crypto" ? CRYPTO_REGISTRY : US_REGISTRY;
@@ -217,6 +218,7 @@ export async function runRealScanner(options: {
     price: number; changePercent: number; volume: number;
     qualityScore: number; confidence: string; signals: string[];
     marketDomain: string; scanType: string;
+    stopLoss: number; target: number; riskReward: string;
   }> = [];
 
   for (const asset of assets) {
@@ -439,12 +441,63 @@ export async function runRealScanner(options: {
     }
 
     if (matches && score >= 40) {
+      // Calculate stop loss and target based on scan type and ATR
+      const atr = atr14;
+      let stopLoss: number;
+      let target: number;
+
+      switch (scanType) {
+        case "ema_alignment":
+          // SL below EMA20 or 1.5x ATR below current price
+          stopLoss = Math.round(Math.max(ema20 * 0.99, currentPrice - atr * 1.5) * 100) / 100;
+          // Target: 2x risk (risk = price - SL)
+          target = Math.round((currentPrice + (currentPrice - stopLoss) * 2) * 100) / 100;
+          break;
+        case "volume_spike":
+          // SL: day's low or 2x ATR
+          stopLoss = Math.round(Math.max(cp.low, currentPrice - atr * 2) * 100) / 100;
+          // Target: 1.5x risk for quick trades
+          target = Math.round((currentPrice + (currentPrice - stopLoss) * 1.5) * 100) / 100;
+          break;
+        case "breakout_52w":
+        case "ath_breakout":
+          // SL: previous resistance (high52w * 0.95) or 2x ATR
+          stopLoss = Math.round(Math.max(high52w * 0.95, currentPrice - atr * 2) * 100) / 100;
+          // Target: breakout measured move (distance from low52w to high52w, projected above)
+          const breakoutRange = high52w - low52w;
+          target = Math.round((currentPrice + breakoutRange * 0.5) * 100) / 100;
+          break;
+        case "momentum_continuation":
+          // SL: below EMA20 or 1.5x ATR
+          stopLoss = Math.round(Math.min(ema20 * 0.98, currentPrice - atr * 1.5) * 100) / 100;
+          // Target: 2.5x risk for momentum trades
+          target = Math.round((currentPrice + (currentPrice - stopLoss) * 2.5) * 100) / 100;
+          break;
+        case "relative_strength":
+          // SL: below EMA50 or 2x ATR
+          stopLoss = Math.round(Math.max(ema50 * 0.98, currentPrice - atr * 2) * 100) / 100;
+          // Target: 3x risk for swing trades
+          target = Math.round((currentPrice + (currentPrice - stopLoss) * 3) * 100) / 100;
+          break;
+        default:
+          stopLoss = Math.round((currentPrice - atr * 1.5) * 100) / 100;
+          target = Math.round((currentPrice + atr * 3) * 100) / 100;
+      }
+
+      const risk = currentPrice - stopLoss;
+      const reward = target - currentPrice;
+      const riskReward = risk > 0 ? `1:${(reward / risk).toFixed(1)}` : "N/A";
+
+      // Add SL/Target to signals
+      signals.push(`SL: ${stopLoss.toFixed(2)} | Target: ${target.toFixed(2)} (${riskReward})`);
+
       results.push({
         symbol: asset.symbol, name: asset.name, sector: asset.sector, exchange: asset.exchange,
         price: cp.price, changePercent: cp.changePercent, volume: cp.volume,
         qualityScore: Math.min(100, Math.round(score)),
         confidence: score >= 80 ? "high" : score >= 60 ? "medium" : "low",
         signals, marketDomain: domain, scanType,
+        stopLoss, target, riskReward,
       });
     }
   }

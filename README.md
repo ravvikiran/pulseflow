@@ -150,5 +150,5 @@ CRON_API_KEY=                                 # Protect scheduled job endpoints
 |---------|----------|
 | `npm install` fails | Use `pnpm install` |
 | Scanner shows no results | Normal on quiet market days — relaxed gates show 5-15 results typically |
-| Yahoo errors for some tickers | Demerged tickers (e.g., TATAMOTORS) — app handles gracefully |
+| Yahoo errors for some tickers | Some delisted/restructured tickers may not have data — app handles gracefully |
 | Charts not loading | Refresh the page — lightweight-charts needs a clean mount |
