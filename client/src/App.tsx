@@ -62,7 +62,7 @@ function Router() {
         <Route path="/alerts" component={Alerts} />
         <Route path="/historical" component={Historical} />
         <Route path="/journal" component={Journal} />
-                <Route path="/profile" component={Profile} />
+        <Route path="/profile" component={Profile} />
         <Route path="/settings" component={Settings} />
         <Route path="/settings/:section" component={Settings} />
         <Route path="/notifications" component={Notifications} />

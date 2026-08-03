@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { BookOpen, TrendingUp, TrendingDown, Target, ShieldAlert, Trash2, RefreshCw, BarChart3 } from "lucide-react";
+import { BookOpen, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";

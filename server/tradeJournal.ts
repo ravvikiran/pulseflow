@@ -5,8 +5,10 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const JOURNAL_PATH = path.resolve(import.meta.dirname, "../data/trade-journal.json");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const JOURNAL_PATH = path.resolve(__dirname, "../data/trade-journal.json");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
