@@ -26,6 +26,7 @@ import Assets from "./pages/Assets";
 import Watchlists from "./pages/Watchlists";
 import Alerts from "./pages/Alerts";
 import Historical from "./pages/Historical";
+import Journal from "./pages/Journal";
 import Profile from "./pages/Profile";
 import Settings from "@/pages/settings/Settings";
 import Notifications from "@/pages/Notifications";
@@ -60,6 +61,7 @@ function Router() {
         <Route path="/watchlists" component={Watchlists} />
         <Route path="/alerts" component={Alerts} />
         <Route path="/historical" component={Historical} />
+        <Route path="/journal" component={Journal} />
                 <Route path="/profile" component={Profile} />
         <Route path="/settings" component={Settings} />
         <Route path="/settings/:section" component={Settings} />

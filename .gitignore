@@ -116,3 +116,6 @@ temp/
 # Backup and archive files
 *.bak
 *.zip
+
+# Trade journal data (personal)
+data/trade-journal.json

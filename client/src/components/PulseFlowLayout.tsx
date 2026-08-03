@@ -5,7 +5,7 @@ import {
   LayoutDashboard, RotateCcw, ScanSearch, LineChart,
   Star, Bell, History, Menu, X,
   Activity, TrendingUp, ChevronRight, Zap, ChevronDown,
-  Bitcoin, Flag, Globe, BarChart3, Settings2,
+  Bitcoin, Flag, Globe, BarChart3, Settings2, BookOpen,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -61,6 +61,7 @@ const NAV_STRUCTURE = [
     group: "Intelligence",
     items: [
       { label: "Pattern Scanner", href: "/patterns", icon: ScanSearch },
+      { label: "Trade Journal", href: "/journal", icon: BookOpen },
       { label: "Notifications", href: "/notifications", icon: Bell },
       { label: "Alerts", href: "/alerts", icon: Bell, alertBadge: true },
       { label: "Historical Analysis", href: "/historical", icon: History },

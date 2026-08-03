@@ -116,16 +116,48 @@ function ResultRow({ result, index }: { result: any; index: number }) {
               ))}
             </div>
           )}
-          <div className="mt-2">
+          <div className="mt-2 flex gap-2">
             <Link href={`/assets/${result.symbol}`}>
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5">
                 <BarChart3 className="w-3 h-3" /> View Chart
               </Button>
             </Link>
+            <CryptoSaveTradeButton result={result} />
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+function CryptoSaveTradeButton({ result }: { result: any }) {
+  const utils = trpc.useUtils();
+  const saveMutation = trpc.journal.save.useMutation({
+    onSuccess: () => { utils.journal.all.invalidate(); toast.success(`${result.symbol} saved to journal`); },
+  });
+
+  return (
+    <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5"
+      onClick={() => saveMutation.mutate({
+        symbol: result.symbol,
+        name: result.name ?? result.symbol,
+        sector: result.sector ?? "Cryptocurrency",
+        exchange: result.exchange ?? "CRYPTO",
+        market: "crypto",
+        scanType: result.scanType ?? "ema_alignment",
+        entryPrice: result.price ?? 0,
+        entryDate: new Date().toISOString(),
+        stopLoss: result.stopLoss ?? (result.price ?? 0) * 0.95,
+        target: result.target ?? (result.price ?? 0) * 1.10,
+        riskReward: result.riskReward ?? "1:2",
+        qualityScore: result.qualityScore ?? 50,
+        confidence: result.confidence ?? "medium",
+        signals: result.signals ?? [],
+      })}
+      disabled={saveMutation.isPending}
+    >
+      📌 {saveMutation.isPending ? "Saving..." : "Save Trade"}
+    </Button>
   );
 }
 

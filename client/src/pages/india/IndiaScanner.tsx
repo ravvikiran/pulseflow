@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 const INDIA_SECTORS = [
   "Information Technology", "Banking & Finance", "Energy & Oil", "Healthcare & Pharma",
@@ -125,9 +126,45 @@ function ScanResultCard({ result, currency = "INR" }: {
         {result.sector && (
           <div className="text-[9px] text-muted-foreground truncate">Sector: <span className="text-foreground">{result.sector}</span></div>
         )}
-        <span className={cn("text-[9px] font-semibold ml-auto", confidenceColor)}>{result.confidence.toUpperCase()}</span>
+        <div className="flex items-center gap-2 ml-auto">
+          <SaveTradeButton result={result} />
+          <span className={cn("text-[9px] font-semibold", confidenceColor)}>{result.confidence.toUpperCase()}</span>
+        </div>
       </div>
     </div>
+  );
+}
+
+function SaveTradeButton({ result }: { result: any }) {
+  const utils = trpc.useUtils();
+  const saveMutation = trpc.journal.save.useMutation({
+    onSuccess: () => { utils.journal.all.invalidate(); toast.success(`${result.symbol} saved to journal`); },
+    onError: () => toast.error("Failed to save trade"),
+  });
+
+  return (
+    <button
+      onClick={() => saveMutation.mutate({
+        symbol: result.symbol,
+        name: result.name,
+        sector: result.sector ?? "",
+        exchange: result.exchange ?? "NSE",
+        market: (result.marketDomain ?? "india") as "india" | "crypto" | "us",
+        scanType: result.scanType ?? "ema_alignment",
+        entryPrice: result.price,
+        entryDate: new Date().toISOString(),
+        stopLoss: result.stopLoss ?? result.price * 0.95,
+        target: result.target ?? result.price * 1.10,
+        riskReward: result.riskReward ?? "1:2",
+        qualityScore: result.qualityScore ?? 50,
+        confidence: result.confidence ?? "medium",
+        signals: result.signals ?? [],
+      })}
+      disabled={saveMutation.isPending}
+      className="text-[9px] px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors"
+    >
+      {saveMutation.isPending ? "Saving..." : "📌 Save Trade"}
+    </button>
   );
 }
 

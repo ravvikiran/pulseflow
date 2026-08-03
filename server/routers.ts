@@ -2,6 +2,7 @@ import { z } from "zod";
 import { COOKIE_NAME } from "@shared/const";
 import { settingsRouter } from "./routers/settings";
 import { notificationsRouter } from "./routers/notifications";
+import { journalRouter } from "./routers/journal";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
@@ -1053,6 +1054,7 @@ export const appRouter = router({
   historical: historicalRouter,
   settings: settingsRouter,
   notifications: notificationsRouter,
+  journal: journalRouter,
 });
 
 export type AppRouter = typeof appRouter;
