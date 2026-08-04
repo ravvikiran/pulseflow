@@ -163,6 +163,11 @@ export default function Journal() {
                   </div>
                 </div>
 
+                {/* Close trade button (for open trades only) */}
+                {trade.status === "open" && (
+                  <CloseTradeButton trade={trade} />
+                )}
+
                 {/* Date + actions */}
                 <div className="flex items-center justify-between pt-1 border-t border-border/50">
                   <div className="text-[9px] text-muted-foreground">
@@ -186,6 +191,51 @@ export default function Journal() {
   );
 }
 
+function CloseTradeButton({ trade }: { trade: any }) {
+  const [showInput, setShowInput] = useState(false);
+  const [exitPrice, setExitPrice] = useState(String(trade.currentPrice ?? trade.entryPrice));
+  const utils = trpc.useUtils();
+  const closeMutation = trpc.journal.close.useMutation({
+    onSuccess: () => {
+      utils.journal.all.invalidate();
+      utils.journal.stats.invalidate();
+      toast.success(`${trade.symbol} closed`);
+      setShowInput(false);
+    },
+  });
+
+  if (!showInput) {
+    return (
+      <button
+        onClick={() => setShowInput(true)}
+        className="text-[9px] px-2.5 py-1 rounded border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 font-medium transition-colors"
+      >
+        ✋ Close Trade
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 p-2 rounded bg-muted/50 border border-border/50">
+      <span className="text-[9px] text-muted-foreground">Exit Price:</span>
+      <input
+        type="number"
+        step="0.01"
+        value={exitPrice}
+        onChange={e => setExitPrice(e.target.value)}
+        className="w-24 px-2 py-1 rounded bg-background border border-border text-xs tabular-nums text-foreground"
+      />
+      <button
+        onClick={() => closeMutation.mutate({ id: trade.id, exitPrice: parseFloat(exitPrice) })}
+        disabled={closeMutation.isPending || !exitPrice}
+        className="text-[9px] px-2 py-1 rounded bg-primary text-white font-medium hover:bg-primary/90 disabled:opacity-50"
+      >
+        {closeMutation.isPending ? "..." : "Confirm"}
+      </button>
+      <button onClick={() => setShowInput(false)} className="text-[9px] text-muted-foreground hover:text-foreground">✕</button>
+    </div>
+  );
+}
 
 function FeedbackSection({ trade }: { trade: any }) {
   const utils = trpc.useUtils();
