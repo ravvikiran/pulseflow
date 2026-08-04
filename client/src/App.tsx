@@ -27,6 +27,7 @@ import Watchlists from "./pages/Watchlists";
 import Alerts from "./pages/Alerts";
 import Historical from "./pages/Historical";
 import Journal from "./pages/Journal";
+import Commodities from "./pages/Commodities";
 import Profile from "./pages/Profile";
 import Settings from "@/pages/settings/Settings";
 import Notifications from "@/pages/Notifications";
@@ -62,6 +63,7 @@ function Router() {
         <Route path="/alerts" component={Alerts} />
         <Route path="/historical" component={Historical} />
         <Route path="/journal" component={Journal} />
+        <Route path="/commodities" component={Commodities} />
         <Route path="/profile" component={Profile} />
         <Route path="/settings" component={Settings} />
         <Route path="/settings/:section" component={Settings} />

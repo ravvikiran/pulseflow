@@ -79,6 +79,18 @@ const US_TICKERS = new Set([
   "KO", "PG", "WMT", "BA", "CAT", "VZ", "T",
 ]);
 
+// Commodities Yahoo Finance tickers
+const COMMODITY_MAP: Record<string, string> = {
+  GOLD: "GC=F",
+  SILVER: "SI=F",
+  PLATINUM: "PL=F",
+  CRUDE_OIL: "CL=F",
+  BRENT: "BZ=F",
+  NATURAL_GAS: "NG=F",
+  COPPER: "HG=F",
+  ALUMINIUM: "ALI=F",
+};
+
 /**
  * Convert our internal symbol to Yahoo Finance ticker
  */
@@ -87,6 +99,8 @@ export function toYahooSymbol(symbol: string): string {
   if (INDEX_MAP[symbol]) return INDEX_MAP[symbol];
   // Check crypto map
   if (CRYPTO_MAP[symbol]) return CRYPTO_MAP[symbol];
+  // Check commodities
+  if (COMMODITY_MAP[symbol]) return COMMODITY_MAP[symbol];
   // US stocks
   if (US_TICKERS.has(symbol)) return symbol;
   // Default: assume NSE India stock

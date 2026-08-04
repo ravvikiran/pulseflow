@@ -53,7 +53,7 @@ export const journalRouter = router({
       name: z.string(),
       sector: z.string(),
       exchange: z.string(),
-      market: z.enum(["india", "crypto", "us"]),
+      market: z.enum(["india", "crypto", "us", "commodities"]),
       scanType: z.string(),
       entryPrice: z.number(),
       entryDate: z.string(),

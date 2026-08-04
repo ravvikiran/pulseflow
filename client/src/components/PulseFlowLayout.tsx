@@ -51,6 +51,15 @@ const NAV_STRUCTURE = [
     badge: "Future Ready",
   },
   {
+    group: "Commodities",
+    accent: "text-amber-300",
+    borderColor: "border-amber-400/30",
+    icon: Globe,
+    items: [
+      { label: "Commodities", href: "/commodities", icon: BarChart3 },
+    ],
+  },
+  {
     group: "Portfolio",
     items: [
       { label: "Asset Tracker", href: "/assets", icon: LineChart },

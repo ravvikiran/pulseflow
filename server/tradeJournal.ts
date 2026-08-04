@@ -18,7 +18,7 @@ export interface SavedTrade {
   name: string;
   sector: string;
   exchange: string;
-  market: "india" | "crypto" | "us";
+  market: "india" | "crypto" | "us" | "commodities";
   scanType: string;
   // Entry details
   entryPrice: number;

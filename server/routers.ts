@@ -695,6 +695,32 @@ const usRouter = router({
   }),
 });
 
+// ─── Commodities Router ───────────────────────────────────────────────────────
+import { COMMODITY_REGISTRY } from "./assetRegistry";
+
+const commoditiesRouter = router({
+  // List all commodities with live prices
+  list: publicProcedure.query(async () => {
+    const symbols = COMMODITY_REGISTRY.map(a => a.symbol);
+    const priceMap = await getCurrentPrices(symbols);
+    return COMMODITY_REGISTRY.map(a => ({
+      symbol: a.symbol, name: a.name, category: a.category, sector: a.sector, unit: a.unit,
+      ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
+    }));
+  }),
+
+  // Get single commodity detail with history
+  detail: publicProcedure
+    .input(z.object({ symbol: z.string() }))
+    .query(async ({ input }) => {
+      const commodity = COMMODITY_REGISTRY.find(a => a.symbol === input.symbol);
+      if (!commodity) return null;
+      const price = await getCurrentPrice(input.symbol);
+      const candles = await getHistoricalCandles(input.symbol, 365);
+      return { ...commodity, ...price, candles };
+    }),
+});
+
 // ─── Unified Asset Router (for asset detail/chart, cross-domain search) ───────
 const assetsRouter = router({
   search: publicProcedure
@@ -1048,6 +1074,7 @@ export const appRouter = router({
   india: indiaRouter,
   crypto: cryptoRouter,
   us: usRouter,
+  commodities: commoditiesRouter,
   assets: assetsRouter,
   watchlists: watchlistsRouter,
   alerts: alertsRouter,

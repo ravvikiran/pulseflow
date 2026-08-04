@@ -223,6 +223,34 @@ export const INDEX_REGISTRY: IndexAsset[] = [
   { symbol: "VIX", name: "CBOE Volatility Index", domain: "US", exchange: "NYSE", currency: "USD", assetClass: "INDEX", basePrice: 18.5, sector: "Index" },
 ];
 
+// ─── Commodities Registry ─────────────────────────────────────────────────────
+
+export interface CommodityAsset {
+  symbol: string;
+  name: string;
+  category: "PRECIOUS_METAL" | "ENERGY" | "BASE_METAL" | "AGRICULTURAL";
+  currency: "USD";
+  domain: "COMMODITIES";
+  assetClass: "COMMODITY";
+  basePrice: number;
+  sector: string;
+  unit: string;
+}
+
+export const COMMODITY_REGISTRY: CommodityAsset[] = [
+  // Precious Metals
+  { symbol: "GOLD", name: "Gold", category: "PRECIOUS_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 2350, sector: "Precious Metals", unit: "oz" },
+  { symbol: "SILVER", name: "Silver", category: "PRECIOUS_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 29, sector: "Precious Metals", unit: "oz" },
+  { symbol: "PLATINUM", name: "Platinum", category: "PRECIOUS_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 980, sector: "Precious Metals", unit: "oz" },
+  // Energy
+  { symbol: "CRUDE_OIL", name: "Crude Oil WTI", category: "ENERGY", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 78, sector: "Energy", unit: "barrel" },
+  { symbol: "BRENT", name: "Brent Crude Oil", category: "ENERGY", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 82, sector: "Energy", unit: "barrel" },
+  { symbol: "NATURAL_GAS", name: "Natural Gas", category: "ENERGY", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 2.5, sector: "Energy", unit: "MMBtu" },
+  // Base Metals
+  { symbol: "COPPER", name: "Copper", category: "BASE_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 4.2, sector: "Base Metals", unit: "lb" },
+  { symbol: "ALUMINIUM", name: "Aluminium", category: "BASE_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 2400, sector: "Base Metals", unit: "ton" },
+];
+
 // ─── Validation Layer ─────────────────────────────────────────────────────────
 
 export interface ValidationResult {

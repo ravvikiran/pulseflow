@@ -12,7 +12,8 @@ function fmt(n: number | undefined | null, d = 2) {
 }
 
 export default function Journal() {
-  const [tab, setTab] = useState<"open" | "closed" | "stats">("open");
+  const [tab, setTab] = useState<"open" | "closed">("open");
+  const [marketFilter, setMarketFilter] = useState<"all" | "india" | "crypto" | "us" | "commodities">("all");
   const utils = trpc.useUtils();
 
   const { data: allTrades, isLoading } = trpc.journal.all.useQuery(undefined, { refetchInterval: 60000 });
@@ -34,8 +35,9 @@ export default function Journal() {
     onSuccess: () => { utils.journal.all.invalidate(); utils.journal.stats.invalidate(); toast.success("Trade deleted"); },
   });
 
-  const openTrades = allTrades?.filter(t => t.status === "open") ?? [];
-  const closedTrades = allTrades?.filter(t => t.status !== "open") ?? [];
+  const filteredTrades = allTrades?.filter(t => marketFilter === "all" || t.market === marketFilter) ?? [];
+  const openTrades = filteredTrades.filter(t => t.status === "open");
+  const closedTrades = filteredTrades.filter(t => t.status !== "open");
 
   return (
     <div className="p-4 lg:p-6 space-y-5 animate-[fade-up_0.3s_ease-out]">
@@ -73,17 +75,33 @@ export default function Journal() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-1 bg-muted/50 p-0.5 rounded-lg w-fit">
-        {[
-          { id: "open" as const, label: `Open (${openTrades.length})` },
-          { id: "closed" as const, label: `Closed (${closedTrades.length})` },
-        ].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)}
-            className={cn("px-4 py-1.5 rounded-md text-xs font-medium transition-all",
-              tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-            )}>{t.label}</button>
-        ))}
+      {/* Market filter + Tabs */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex gap-1 bg-muted/50 p-0.5 rounded-lg">
+          {[
+            { id: "all" as const, label: "All" },
+            { id: "india" as const, label: "🇮🇳 India" },
+            { id: "crypto" as const, label: "₿ Crypto" },
+            { id: "us" as const, label: "🇺🇸 US" },
+            { id: "commodities" as const, label: "🏆 Commodities" },
+          ].map(m => (
+            <button key={m.id} onClick={() => setMarketFilter(m.id)}
+              className={cn("px-3 py-1.5 rounded-md text-xs font-medium transition-all",
+                marketFilter === m.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}>{m.label}</button>
+          ))}
+        </div>
+        <div className="flex gap-1 bg-muted/50 p-0.5 rounded-lg">
+          {[
+            { id: "open" as const, label: `Open (${openTrades.length})` },
+            { id: "closed" as const, label: `Closed (${closedTrades.length})` },
+          ].map(t => (
+            <button key={t.id} onClick={() => setTab(t.id)}
+              className={cn("px-4 py-1.5 rounded-md text-xs font-medium transition-all",
+                tab === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              )}>{t.label}</button>
+          ))}
+        </div>
       </div>
 
       {/* Trade List */}
