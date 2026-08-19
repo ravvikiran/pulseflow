@@ -5,7 +5,14 @@
  */
 export function useAuth() {
   return {
-    user: { id: 1, name: "Local User", email: null, role: "admin" },
+    user: {
+      id: 1,
+      name: "Local User",
+      email: null,
+      role: "admin",
+      loginMethod: "local" as string | null,
+      createdAt: new Date(),
+    },
     loading: false,
     error: null,
     isAuthenticated: true,
