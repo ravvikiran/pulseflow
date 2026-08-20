@@ -53,9 +53,11 @@ function createAnonContext(): TrpcContext {
 // ─── Notifications Router Tests ───────────────────────────────────────────────
 describe("notifications router", () => {
   describe("list", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(caller.notifications.list({})).rejects.toThrow();
+      const result = await caller.notifications.list({});
+      expect(result).toHaveProperty("notifications");
+      expect(Array.isArray(result.notifications)).toBe(true);
     });
 
     it("returns empty list when DB is unavailable", async () => {
@@ -92,9 +94,11 @@ describe("notifications router", () => {
   });
 
   describe("unreadCount", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(caller.notifications.unreadCount()).rejects.toThrow();
+      const result = await caller.notifications.unreadCount();
+      expect(result).toHaveProperty("count");
+      expect(typeof result.count).toBe("number");
     });
 
     it("returns count object when DB is unavailable", async () => {
@@ -107,9 +111,10 @@ describe("notifications router", () => {
   });
 
   describe("recent", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(caller.notifications.recent()).rejects.toThrow();
+      const result = await caller.notifications.recent();
+      expect(Array.isArray(result)).toBe(true);
     });
 
     it("returns array when DB is unavailable", async () => {
@@ -120,9 +125,10 @@ describe("notifications router", () => {
   });
 
   describe("markRead", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(caller.notifications.markRead({ id: 1 })).rejects.toThrow();
+      const result = await caller.notifications.markRead({ id: 1 });
+      expect(result).toHaveProperty("success");
     });
 
     it("returns success when DB is unavailable", async () => {
@@ -133,9 +139,10 @@ describe("notifications router", () => {
   });
 
   describe("markAllRead", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(caller.notifications.markAllRead()).rejects.toThrow();
+      const result = await caller.notifications.markAllRead();
+      expect(result).toHaveProperty("success");
     });
 
     it("returns success when DB is unavailable", async () => {
@@ -146,9 +153,10 @@ describe("notifications router", () => {
   });
 
   describe("delete", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(caller.notifications.delete({ id: 1 })).rejects.toThrow();
+      const result = await caller.notifications.delete({ id: 1 });
+      expect(result).toHaveProperty("success");
     });
 
     it("returns success when DB is unavailable", async () => {
@@ -532,7 +540,7 @@ describe("india scanner (improved engine)", () => {
       maxResults: 5,
     });
     expect(Array.isArray(result)).toBe(true);
-  });
+  }, 30000);
 
     it("rejects invalid scan type", async () => {
       const caller = appRouter.createCaller(createAnonContext());

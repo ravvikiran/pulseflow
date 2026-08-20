@@ -14,8 +14,8 @@ import {
   detectATHBreakout,
   SECTORS,
   NSE_STOCKS,
-  CRYPTO_ASSETS,
 } from "./marketEngine";
+import { CRYPTO_REGISTRY } from "./assetRegistry";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 import type { User } from "../drizzle/schema";
@@ -378,7 +378,7 @@ describe("crypto router", () => {
     expect(result.length).toBeGreaterThan(0);
     for (const c of result) {
       // Must be crypto assets only
-      expect(CRYPTO_ASSETS.some(a => a.symbol === c.symbol)).toBe(true);
+      expect(CRYPTO_REGISTRY.some(a => a.symbol === c.symbol)).toBe(true);
     }
   });
 
@@ -387,7 +387,7 @@ describe("crypto router", () => {
     const result = await caller.crypto.scanner({ scanType: "volume_spike", timeframe: "1D" });
     expect(Array.isArray(result)).toBe(true);
     for (const r of result) {
-      expect(CRYPTO_ASSETS.some(a => a.symbol === r.symbol)).toBe(true);
+      expect(CRYPTO_REGISTRY.some(a => a.symbol === r.symbol)).toBe(true);
     }
   });
 
@@ -397,7 +397,7 @@ describe("crypto router", () => {
     expect(result.length).toBeGreaterThan(0);
     for (const a of result) {
       expect(a.price).toBeGreaterThan(0);
-      expect(CRYPTO_ASSETS.some(ca => ca.symbol === a.symbol)).toBe(true);
+      expect(CRYPTO_REGISTRY.some(ca => ca.symbol === a.symbol)).toBe(true);
     }
   });
 
@@ -442,7 +442,7 @@ describe("assets router", () => {
     const caller = appRouter.createCaller(createPublicContext());
     const result = await caller.assets.search({ query: "INFY", market: "india" });
     for (const a of result) {
-      expect(CRYPTO_ASSETS.some(ca => ca.symbol === a.symbol)).toBe(false);
+      expect(CRYPTO_REGISTRY.some(ca => ca.symbol === a.symbol)).toBe(false);
     }
   });
 
@@ -450,7 +450,7 @@ describe("assets router", () => {
     const caller = appRouter.createCaller(createPublicContext());
     const result = await caller.assets.search({ query: "ETH", market: "crypto" });
     for (const a of result) {
-      expect(CRYPTO_ASSETS.some(ca => ca.symbol === a.symbol)).toBe(true);
+      expect(CRYPTO_REGISTRY.some(ca => ca.symbol === a.symbol)).toBe(true);
     }
   });
 
@@ -559,7 +559,7 @@ describe("global router", () => {
     const caller = appRouter.createCaller(createPublicContext());
     const result = await caller.global.overview();
     for (const g of result.india.topGainers) {
-      expect(CRYPTO_ASSETS.some(a => a.symbol === g.symbol)).toBe(false);
+      expect(CRYPTO_REGISTRY.some(a => a.symbol === g.symbol)).toBe(false);
     }
   });
 
@@ -567,7 +567,7 @@ describe("global router", () => {
     const caller = appRouter.createCaller(createPublicContext());
     const result = await caller.global.overview();
     for (const g of result.crypto.topGainers) {
-      expect(CRYPTO_ASSETS.some(a => a.symbol === g.symbol)).toBe(true);
+      expect(CRYPTO_REGISTRY.some(a => a.symbol === g.symbol)).toBe(true);
     }
   });
 });

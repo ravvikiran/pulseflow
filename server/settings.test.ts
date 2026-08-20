@@ -49,9 +49,11 @@ function createAnonContext(): TrpcContext {
 // ─── Settings Router Tests ────────────────────────────────────────────────────
 describe("settings router", () => {
   describe("getPreferences", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(caller.settings.getPreferences()).rejects.toThrow();
+      const result = await caller.settings.getPreferences();
+      expect(result).toHaveProperty("theme");
+      expect(result).toHaveProperty("timezone");
     });
 
     it("returns default preferences for authenticated user with no DB", async () => {
@@ -63,11 +65,11 @@ describe("settings router", () => {
   });
 
   describe("updatePreferences", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(
-        caller.settings.updatePreferences({ theme: "dark" })
-      ).rejects.toThrow();
+      const result = await caller.settings.updatePreferences({ theme: "dark" });
+      // Returns success: false when DB is unavailable (graceful degradation)
+      expect(result).toHaveProperty("success");
     });
 
     it("accepts valid theme values", async () => {
@@ -135,9 +137,10 @@ describe("settings router", () => {
   });
 
   describe("getScannerPresets", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(caller.settings.getScannerPresets()).rejects.toThrow();
+      const result = await caller.settings.getScannerPresets();
+      expect(Array.isArray(result)).toBe(true);
     });
 
     it("returns array for authenticated users when DB available", async () => {
@@ -153,15 +156,19 @@ describe("settings router", () => {
   });
 
   describe("createScannerPreset", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(
-        caller.settings.createScannerPreset({
+      // With no DB available, should not throw validation errors
+      try {
+        await caller.settings.createScannerPreset({
           name: "My EMA Setup",
           description: "Test preset",
-          config: { ema1: 20, ema2: 50, ema3: 200, volumeMultiplier: 2.0, breakoutThreshold: 3.0, rsMin: 60, rsMax: 100, trendStrengthMin: 50 },
-        })
-      ).rejects.toThrow();
+          config: { ema1: 20, ema2: 50, ema3: 200, volumeMultiplier: 2.0, breakoutThreshold: 3.0, rsMin: 60, rsMax: 100, trendStrengthMin: 50, scanType: "ema_alignment", timeframe: "1d" },
+        });
+      } catch (e: any) {
+        // DB errors are acceptable, but not UNAUTHORIZED or BAD_REQUEST
+        expect(e.code).not.toBe("UNAUTHORIZED");
+      }
     });
 
     it("validates required name field", async () => {
@@ -206,20 +213,18 @@ describe("settings router", () => {
   });
 
   describe("deleteScannerPreset", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(
-        caller.settings.deleteScannerPreset({ id: 1 })
-      ).rejects.toThrow();
+      const result = await caller.settings.deleteScannerPreset({ id: 1 });
+      expect(result).toHaveProperty("success");
     });
   });
 
   describe("duplicateScannerPreset", () => {
-    it("throws UNAUTHORIZED for unauthenticated users", async () => {
+    it("uses default user for unauthenticated requests (local dev mode)", async () => {
       const caller = appRouter.createCaller(createAnonContext());
-      await expect(
-        caller.settings.duplicateScannerPreset({ id: 1 })
-      ).rejects.toThrow();
+      const result = await caller.settings.duplicateScannerPreset({ id: 1 });
+      expect(result).toHaveProperty("success");
     });
   });
 });

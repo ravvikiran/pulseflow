@@ -310,7 +310,7 @@ export async function getHistory(
   } catch (error) {
     // Only warn once per symbol to avoid console spam
     if (!historyFailedSet.has(symbol)) {
-      historyFailedSet.add(symbol);
+      addToFailedSet(symbol);
       console.warn(`[Yahoo] History unavailable for ${symbol} (${yahooTicker})`);
     }
     return [];
@@ -322,6 +322,15 @@ const MAX_FAILED_SET_SIZE = 200;
 
 // Periodic cleanup of the failed set (every 30 min, allow retries)
 setInterval(() => { historyFailedSet.clear(); }, 30 * 60 * 1000);
+
+// Prevent unbounded growth of the failed set between cleanup cycles
+function addToFailedSet(symbol: string) {
+  if (historyFailedSet.size >= MAX_FAILED_SET_SIZE) {
+    // Evict all — next cycle will allow retries
+    historyFailedSet.clear();
+  }
+  historyFailedSet.add(symbol);
+}
 
 function getStartDate(period: string): Date {
   const now = new Date();
