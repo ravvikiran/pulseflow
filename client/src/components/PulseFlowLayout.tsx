@@ -6,10 +6,13 @@ import {
   Star, Bell, History, Menu, X,
   Activity, TrendingUp, ChevronRight, Zap, ChevronDown,
   Bitcoin, Flag, Globe, BarChart3, Settings2, BookOpen,
+  Command, Search,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationCenter";
+import { MarketTicker } from "@/components/MarketTicker";
+import { MarketPulse } from "@/components/MarketPulse";
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 const NAV_STRUCTURE = [
@@ -241,9 +244,23 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
+        {/* Market Pulse Feed */}
+        {!isCollapsed && (
+          <div className="border-t border-border px-3 py-3">
+            <MarketPulse maxEvents={4} />
+          </div>
+        )}
+
         {/* Bottom section */}
         <div className="border-t border-border px-2 py-3 space-y-1">
           <NavItem href="/settings" icon={Settings2} label="Settings" collapsed={isCollapsed} />
+          {/* Keyboard shortcut hint */}
+          {!isCollapsed && (
+            <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] text-muted-foreground">
+              <Command className="w-3 h-3" />
+              <span>Ctrl+K to search</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -284,7 +301,7 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/50 backdrop-blur-sm shrink-0">
+        <header className="flex items-center justify-between px-4 py-3 border-b border-border frosted-header shrink-0">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
@@ -313,6 +330,16 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Command palette trigger */}
+            <button
+              onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))}
+              className="hidden sm:flex items-center gap-2 h-8 px-3 rounded-md bg-surface-2 border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-all cursor-pointer"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Search...</span>
+              <kbd className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-background border border-border font-mono">⌘K</kbd>
+            </button>
+
             {/* Live market indicator */}
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-bull/10 border border-bull/20">
               <div className="w-1.5 h-1.5 rounded-full bg-bull pulse-live" />
@@ -323,6 +350,9 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
             <NotificationBell />
           </div>
         </header>
+
+        {/* Market Ticker */}
+        <MarketTicker />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">

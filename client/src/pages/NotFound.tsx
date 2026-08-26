@@ -1,52 +1,68 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, Home } from "lucide-react";
+import { Home, ArrowLeft, Activity } from "lucide-react";
 import { useLocation } from "wouter";
+import { motion } from "framer-motion";
 
 export default function NotFound() {
   const [, setLocation] = useLocation();
 
-  const handleGoHome = () => {
-    setLocation("/");
-  };
-
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <Card className="w-full max-w-lg mx-4 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardContent className="pt-8 pb-8 text-center">
-          <div className="flex justify-center mb-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-red-100 rounded-full animate-pulse" />
-              <AlertCircle className="relative h-16 w-16 text-red-500" />
-            </div>
+    <div className="min-h-[80vh] w-full flex items-center justify-center p-4">
+      <motion.div
+        className="text-center max-w-md"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* Animated 404 */}
+        <motion.div
+          className="relative mb-8"
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.5, type: "spring" }}
+        >
+          <div className="text-[120px] font-bold leading-none text-transparent bg-clip-text bg-gradient-to-b from-primary/40 to-primary/5 select-none">
+            404
           </div>
-
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">404</h1>
-
-          <h2 className="text-xl font-semibold text-slate-700 mb-4">
-            Page Not Found
-          </h2>
-
-          <p className="text-slate-600 mb-8 leading-relaxed">
-            Sorry, the page you are looking for doesn't exist.
-            <br />
-            It may have been moved or deleted.
-          </p>
-
-          <div
-            id="not-found-button-group"
-            className="flex flex-col sm:flex-row gap-3 justify-center"
+          <motion.div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+            animate={{ y: [0, -6, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
           >
-            <Button
-              onClick={handleGoHome}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              Go Home
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="w-14 h-14 rounded-xl bg-gradient-primary flex items-center justify-center shadow-lg shadow-primary/30">
+              <Activity className="w-7 h-7 text-white" />
+            </div>
+          </motion.div>
+        </motion.div>
+
+        <h1 className="text-xl font-bold text-foreground mb-2">Page Not Found</h1>
+        <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
+          This market data point doesn't exist. It may have been moved or is no longer available.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Button
+            onClick={() => window.history.back()}
+            variant="outline"
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Go Back
+          </Button>
+          <Button
+            onClick={() => setLocation("/")}
+            className="gap-2"
+          >
+            <Home className="w-4 h-4" />
+            Home Dashboard
+          </Button>
+        </div>
+
+        {/* Keyboard shortcut hint */}
+        <p className="text-[10px] text-muted-foreground mt-6">
+          Tip: Press <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-foreground font-mono">Ctrl+K</kbd> to quickly navigate anywhere
+        </p>
+      </motion.div>
     </div>
   );
 }

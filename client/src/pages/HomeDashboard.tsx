@@ -8,6 +8,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AssetTable } from "@/components/shared/AssetTable";
+import { Sparkline, generateSparklineData } from "@/components/Sparkline";
+import { CountUp } from "@/components/AnimatedNumber";
+import { motion } from "framer-motion";
 
 // ─── Market Domain Card ───────────────────────────────────────────────────────
 interface MarketDomainCardProps {
@@ -33,8 +36,13 @@ function MarketDomainCard({
   const state = sentiment?.marketState ?? "neutral";
 
   return (
-    <div className={cn("pf-card overflow-hidden border-t-2 flex flex-col", borderClass)}>
-      {/* Header */}
+    <motion.div
+      className={cn("pf-card-lift overflow-hidden border-t-2 flex flex-col", borderClass)}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      whileHover={{ y: -2 }}
+    >      {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2.5">
@@ -103,7 +111,10 @@ function MarketDomainCard({
               {(topGainers ?? []).slice(0, 3).map(a => (
                 <div key={a.symbol} className="flex items-center justify-between">
                   <span className="text-[10px] font-medium text-foreground">{a.symbol}</span>
-                  <span className="text-[10px] font-semibold text-bull tabular-nums">+{a.changePercent.toFixed(2)}%</span>
+                  <div className="flex items-center gap-1.5">
+                    <Sparkline data={generateSparklineData(12, "up")} width={36} height={14} color="bull" strokeWidth={1} showArea={false} />
+                    <span className="text-[10px] font-semibold text-bull tabular-nums">+{a.changePercent.toFixed(2)}%</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -120,7 +131,10 @@ function MarketDomainCard({
               {(topLosers ?? []).slice(0, 3).map(a => (
                 <div key={a.symbol} className="flex items-center justify-between">
                   <span className="text-[10px] font-medium text-foreground">{a.symbol}</span>
-                  <span className="text-[10px] font-semibold text-bear tabular-nums">{a.changePercent.toFixed(2)}%</span>
+                  <div className="flex items-center gap-1.5">
+                    <Sparkline data={generateSparklineData(12, "down")} width={36} height={14} color="bear" strokeWidth={1} showArea={false} />
+                    <span className="text-[10px] font-semibold text-bear tabular-nums">{a.changePercent.toFixed(2)}%</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -137,7 +151,7 @@ function MarketDomainCard({
           </Button>
         </Link>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -244,7 +258,7 @@ export default function HomeDashboard() {
           <Zap className="w-4 h-4 text-primary" />
           Quick Navigation
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 stagger-children">
           <QuickNavTile href="/india" icon={<BarChart3 className="w-4 h-4 text-[oklch(0.65_0.20_40)]" />}
             label="India Dashboard" description="NSE overview & breadth"
             accentClass="bg-[oklch(0.65_0.20_40/0.12)]" />
