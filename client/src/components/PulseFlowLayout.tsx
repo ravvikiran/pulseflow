@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationCenter";
 import { MarketTicker } from "@/components/MarketTicker";
-import { MarketPulse } from "@/components/MarketPulse";
+import { MarketPulsePanel } from "@/components/MarketPulse";
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 const NAV_STRUCTURE = [
@@ -187,6 +187,7 @@ function NavGroup({
 export default function PulseFlowLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pulseOpen, setPulseOpen] = useState(false);
   const [location] = useLocation();
 
   const { data: alertData } = trpc.alerts.unreadCount.useQuery(undefined, {
@@ -244,13 +245,6 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
 
-        {/* Market Pulse Feed */}
-        {!isCollapsed && (
-          <div className="border-t border-border px-3 py-3">
-            <MarketPulse maxEvents={4} />
-          </div>
-        )}
-
         {/* Bottom section */}
         <div className="border-t border-border px-2 py-3 space-y-1">
           <NavItem href="/settings" icon={Settings2} label="Settings" collapsed={isCollapsed} />
@@ -301,7 +295,7 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex items-center justify-between px-4 py-3 border-b border-border frosted-header shrink-0">
+        <header className="flex items-center justify-between px-4 py-3 border-b border-border frosted-header shrink-0 relative z-10">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setMobileOpen(true)}
@@ -346,6 +340,21 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
               <span className="text-[10px] font-medium text-bull uppercase tracking-wider">Live</span>
             </div>
 
+            {/* Market Pulse toggle */}
+            <button
+              onClick={() => setPulseOpen(!pulseOpen)}
+              className={cn(
+                "hidden sm:flex items-center gap-1.5 h-8 px-2.5 rounded-md border text-xs transition-all cursor-pointer",
+                pulseOpen
+                  ? "bg-primary/10 border-primary/30 text-primary"
+                  : "bg-surface-2 border-border text-muted-foreground hover:text-foreground hover:border-primary/30"
+              )}
+              title="Toggle Market Pulse"
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">Pulse</span>
+            </button>
+
             {/* Notification Center Bell */}
             <NotificationBell />
           </div>
@@ -359,6 +368,9 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
           {children}
         </main>
       </div>
+
+      {/* Market Pulse Right Panel */}
+      <MarketPulsePanel isOpen={pulseOpen} onToggle={() => setPulseOpen(!pulseOpen)} />
     </div>
   );
 }

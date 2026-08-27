@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useLocation } from "wouter";
 import {
   Settings2, User, Bell, ScanSearch, Database, Shield, Palette,
-  ChevronRight, TrendingUp, Zap, Globe, Check, Loader2
+  ChevronRight, TrendingUp, Check, Loader2
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { usePreferences } from "@/hooks/usePreferences";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -83,25 +83,22 @@ type SectionId = typeof NAV_ITEMS[number]["id"];
 // ─── Main Settings Page ───────────────────────────────────────────────────────
 export default function Settings() {
   const [activeSection, setActiveSection] = useState<SectionId>("general");
-  const [, navigate] = useLocation();
   const { user, isAuthenticated, loading } = useAuth();
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  // Fetch preferences
-  const { data: preferences, isLoading: prefsLoading, refetch: refetchPrefs } =
-    trpc.settings.getPreferences.useQuery(undefined, { enabled: isAuthenticated });
+  // Local preferences (always works, persists to localStorage)
+  const { preferences, updatePreferences: updateLocalPrefs, isSaving: localSaving } = usePreferences();
 
-  // Fetch scanner presets
+  // Attempt tRPC sync (works when DB is available, gracefully fails otherwise)
+  const updatePrefsMutation = trpc.settings.updatePreferences.useMutation({
+    onError: () => {
+      // Silently ignore — localStorage already has the data
+    },
+  });
+
+  // Fetch scanner presets (works only with DB)
   const { data: presets, refetch: refetchPresets } =
     trpc.settings.getScannerPresets.useQuery(undefined, { enabled: isAuthenticated });
-
-  const updatePrefsMutation = trpc.settings.updatePreferences.useMutation({
-    onSuccess: () => {
-      refetchPrefs();
-      toast.success("Settings saved", { description: "Your preferences have been updated." });
-    },
-    onError: (err) => toast.error("Failed to save", { description: err.message }),
-  });
 
   // Scroll to section when nav item clicked
   const handleNavClick = (id: SectionId) => {
@@ -135,7 +132,7 @@ export default function Settings() {
     return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
-  if (loading || prefsLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
         <div className="flex flex-col items-center gap-3">
@@ -146,49 +143,16 @@ export default function Settings() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center h-full min-h-[400px]">
-        <div className="text-center space-y-3">
-          <Shield className="w-12 h-12 text-muted-foreground mx-auto" />
-          <p className="text-lg font-semibold">Authentication Required</p>
-          <p className="text-sm text-muted-foreground">Please sign in to access settings.</p>
-        </div>
-      </div>
-    );
-  }
+  const prefs = preferences;
+  const isSaving = localSaving || updatePrefsMutation.isPending;
 
-  const prefs = preferences ?? {
-    theme: "dark" as const,
-    defaultLandingPage: "home" as const,
-    timezone: "Asia/Kolkata",
-    currency: "INR",
-    language: "en",
-    preferredModules: ["india", "crypto"],
-    preferredTimeframe: "1d",
-    scannerRefreshInterval: 60,
-    heatmapRefreshInterval: 30,
-    defaultChartInterval: "1d",
-    alertEmail: false,
-    alertEmailAddress: null,
-    alertTelegram: false,
-    alertTelegramHandle: null,
-    alertInApp: true,
-    alertVolumeSpike: true,
-    alertEmaCrossover: true,
-    alertBreakout: true,
-    alertSectorMomentum: true,
-    alertSensitivity: "medium" as const,
-    autoRefresh: true,
-    realTimeUpdates: true,
-    performanceMode: false,
-    dataRetentionDays: 90,
-  };
+  const updatePrefs = (updates: Partial<typeof preferences>) => {
+    // Always persist locally (immediate, always works)
+    updateLocalPrefs(updates);
+    toast.success("Settings saved", { description: "Your preferences have been updated." });
 
-  const isSaving = updatePrefsMutation.isPending;
-
-  const updatePrefs = (updates: Parameters<typeof updatePrefsMutation.mutate>[0]) => {
-    updatePrefsMutation.mutate(updates);
+    // Also try to sync to server (best effort)
+    updatePrefsMutation.mutate(updates as any);
   };
 
   return (
@@ -311,9 +275,9 @@ export default function Settings() {
           {/* ── Scanner Configuration ── */}
           <div ref={(el) => { sectionRefs.current["scanner"] = el; }} id="section-scanner">
             <ScannerConfigSection
-              prefs={prefs}
+              prefs={prefs as unknown as Record<string, unknown>}
               presets={presets ?? []}
-              onUpdate={updatePrefs}
+              onUpdate={updatePrefs as any}
               onPresetsChange={refetchPresets}
               isSaving={isSaving}
             />
@@ -326,12 +290,12 @@ export default function Settings() {
 
           {/* ── Profile ── */}
           <div ref={(el) => { sectionRefs.current["profile"] = el; }} id="section-profile">
-            <ProfileSection user={user} prefs={prefs} onUpdate={updatePrefs} />
+            <ProfileSection user={user} prefs={prefs as unknown as Record<string, unknown>} onUpdate={updatePrefs as any} />
           </div>
 
           {/* ── Security ── */}
           <div ref={(el) => { sectionRefs.current["security"] = el; }} id="section-security">
-            <SecuritySection prefs={prefs} onUpdate={updatePrefs} />
+            <SecuritySection prefs={prefs as unknown as Record<string, unknown>} onUpdate={updatePrefs as any} />
           </div>
 
           {/* Bottom padding */}

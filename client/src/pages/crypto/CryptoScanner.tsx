@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import {
   Search, Filter, Play, Save, Trash2,
   TrendingUp, BarChart3, Activity, Zap,
-  ArrowUpRight,
+  ArrowUpRight, Copy, Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -127,6 +127,41 @@ function ResultRow({ result, index }: { result: any; index: number }) {
         </div>
       )}
     </div>
+  );
+}
+
+function CopySymbolsButton({ symbols, exchange, suffix = "" }: { symbols: string[]; exchange: string; suffix?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    // Format: EXCHANGE:SYMBOLsuffix,EXCHANGE:SYMBOLsuffix,...
+    const tvSymbols = symbols.map(s => `${exchange}:${s}${suffix}`).join(",");
+    navigator.clipboard.writeText(tvSymbols).then(() => {
+      setCopied(true);
+      toast.success(`${symbols.length} symbols copied for TradingView`, {
+        description: "Paste in TradingView's 'Add Symbol' to add all at once",
+      });
+      setTimeout(() => setCopied(false), 2500);
+    }).catch(() => {
+      toast.error("Failed to copy to clipboard");
+    });
+  };
+
+  if (symbols.length === 0) return null;
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className={cn(
+        "h-7 text-xs gap-1.5 transition-all",
+        copied && "border-bull/50 text-bull bg-bull/5"
+      )}
+      onClick={handleCopy}
+    >
+      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+      {copied ? "Copied!" : `Copy for TradingView`}
+    </Button>
   );
 }
 
@@ -337,7 +372,12 @@ export default function CryptoScanner() {
               <span className="text-sm font-semibold text-foreground">{currentScanType?.label}</span>
               <Badge variant="outline" className="text-[9px]">Crypto Only</Badge>
             </div>
-            {results && <span className="text-xs text-muted-foreground">{results.length} results</span>}
+            <div className="flex items-center gap-2">
+              {results && results.length > 0 && (
+                <CopySymbolsButton symbols={results.map((r: any) => r.symbol)} exchange="BINANCE" suffix="USDT" />
+              )}
+              {results && <span className="text-xs text-muted-foreground">{results.length} results</span>}
+            </div>
           </div>
 
           {/* Column Headers */}

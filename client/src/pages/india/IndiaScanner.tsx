@@ -1,7 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useState, useMemo } from "react";
-import { Zap, RefreshCw, Filter, BarChart3 } from "lucide-react";
+import { Zap, RefreshCw, Filter, BarChart3, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -132,6 +132,42 @@ function ScanResultCard({ result, currency = "INR" }: {
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Copy to TradingView ──────────────────────────────────────────────────────
+function CopyToTradingViewButton({ symbols }: { symbols: string[] }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    // Format for TradingView: NSE:SYMBOL,NSE:SYMBOL,...
+    const tvSymbols = symbols.map(s => `NSE:${s}`).join(",");
+    navigator.clipboard.writeText(tvSymbols).then(() => {
+      setCopied(true);
+      toast.success(`${symbols.length} symbols copied for TradingView`, {
+        description: "Paste in TradingView's 'Add Symbol' to add all at once",
+      });
+      setTimeout(() => setCopied(false), 2500);
+    }).catch(() => {
+      toast.error("Failed to copy to clipboard");
+    });
+  };
+
+  if (symbols.length === 0) return null;
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className={cn(
+        "h-7 text-xs gap-1.5 transition-all",
+        copied && "border-bull/50 text-bull bg-bull/5"
+      )}
+      onClick={handleCopy}
+    >
+      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+      {copied ? "Copied!" : `Copy ${symbols.length} for TradingView`}
+    </Button>
   );
 }
 
@@ -289,8 +325,13 @@ export default function IndiaScanner() {
               <Badge variant="outline" className="text-[9px] ml-1">{results.length} matches</Badge>
             )}
           </h2>
-          <div className="text-[10px] text-muted-foreground">
-            {SCAN_TYPES.find(t => t.value === scanType)?.label} · {timeframe} · NSE
+          <div className="flex items-center gap-2">
+            {results && results.length > 0 && (
+              <CopyToTradingViewButton symbols={results.map(r => r.symbol)} />
+            )}
+            <div className="text-[10px] text-muted-foreground">
+              {SCAN_TYPES.find(t => t.value === scanType)?.label} · {timeframe} · NSE
+            </div>
           </div>
         </div>
 
