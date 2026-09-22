@@ -192,9 +192,162 @@ export async function getRealSectorPerformance(sectors: string[], domain: "india
 
 // ─── Real Scanner (Professional Grade) ────────────────────────────────────────
 
+/** Pre-computed indicator context shared across scan-type evaluations for one asset. */
+interface ScanContext {
+  domain: "india" | "crypto" | "us";
+  cp: { price: number; changePercent: number; volume: number; low: number };
+  currentPrice: number;
+  closes: number[];
+  ema20: number; ema50: number; ema200: number;
+  rsi: number;
+  macd: { line: number; signal: number; histogram: number };
+  volumeRatio: number;
+  estimatedFullDayVol: number;
+  high52w: number; low52w: number;
+  isRecentCrossover: boolean;
+}
+
+/**
+ * Evaluate ONE scan strategy against a pre-computed indicator context.
+ * Returns null if the gate fails, otherwise the base score + signals.
+ * (Verbatim gate/scoring logic extracted from the original switch so single
+ * and combination scans share exactly the same math.)
+ */
+function evaluateSingleScan(scanType: string, ctx: ScanContext): { score: number; signals: string[] } | null {
+  const { domain, cp, currentPrice, closes, ema20, ema50, ema200, rsi, macd, volumeRatio, estimatedFullDayVol, high52w, low52w, isRecentCrossover } = ctx;
+  const signals: string[] = [];
+  let score = 0;
+
+  switch (scanType) {
+    case "ema_alignment": {
+      const gate = currentPrice > ema20 && ema20 > ema50;
+      if (!gate) return null;
+      score = 45;
+      if (ema200 > 0 && ema50 > ema200) score += 15;
+      if (ema200 > 0 && currentPrice > ema200) score += 5;
+      if (macd.histogram > 0) score += 10;
+      if (rsi >= 50 && rsi <= 70) score += 8;
+      if (rsi >= 40 && rsi < 50) score += 3;
+      if (rsi > 75) score -= 8;
+      if (volumeRatio > 1.5) score += 8;
+      else if (volumeRatio > 1.2) score += 4;
+      if (isRecentCrossover) score += 12;
+      const spread = ema50 > 0 ? (ema20 - ema50) / ema50 : 0;
+      if (spread > 0.01) score += 5;
+      signals.push(`EMA Stack: ${currentPrice.toFixed(2)} > ${ema20.toFixed(2)} > ${ema50.toFixed(2)}${ema200 > 0 ? ` > ${ema200.toFixed(2)}` : ""}`);
+      signals.push(`RSI: ${rsi.toFixed(1)} | MACD: ${macd.histogram > 0 ? "+" + macd.histogram.toFixed(2) + " ✓" : macd.histogram.toFixed(2)}`);
+      if (volumeRatio > 1.2) signals.push(`Volume: ${volumeRatio.toFixed(1)}x avg`);
+      if (isRecentCrossover) signals.push(`⚡ Fresh EMA20/50 crossover (last 5 days)`);
+      return { score, signals };
+    }
+    case "volume_spike": {
+      const threshold = domain === "crypto" ? 1.8 : 2.0;
+      const gate = volumeRatio >= threshold && Math.abs(cp.changePercent) > 0.5;
+      if (!gate) return null;
+      score = 45;
+      if (volumeRatio >= 5) score += 30;
+      else if (volumeRatio >= 4) score += 25;
+      else if (volumeRatio >= 3) score += 18;
+      else if (volumeRatio >= 2.5) score += 12;
+      else score += 5;
+      if (cp.changePercent > 0 && currentPrice > ema20) score += 8;
+      if (cp.changePercent < 0 && currentPrice < ema20) score += 5;
+      if (Math.abs(cp.changePercent) > 3) score += 8;
+      if (rsi < 75 && rsi > 25) score += 3;
+      const direction = cp.changePercent > 0 ? "🟢 Bullish" : "🔴 Bearish";
+      signals.push(`${direction} volume spike: ${volumeRatio.toFixed(1)}x avg`);
+      signals.push(`Move: ${cp.changePercent > 0 ? "+" : ""}${cp.changePercent.toFixed(2)}% | Est. Vol: ${(estimatedFullDayVol / 100000).toFixed(1)}L`);
+      signals.push(`RSI: ${rsi.toFixed(1)} | Trend: ${currentPrice > ema50 ? "Above EMA50" : "Below EMA50"}`);
+      return { score, signals };
+    }
+    case "breakout_52w": {
+      const gate = currentPrice >= high52w * 0.95;
+      if (!gate) return null;
+      const proximity = (currentPrice / high52w);
+      score = proximity >= 0.995 ? 70 : proximity >= 0.98 ? 55 : 45;
+      if (volumeRatio >= 2.5) score += 15;
+      else if (volumeRatio >= 1.5) score += 10;
+      else if (volumeRatio >= 1.2) score += 5;
+      if (rsi >= 55 && rsi <= 75) score += 8;
+      if (rsi > 80) score -= 8;
+      if (macd.histogram > 0) score += 5;
+      if (currentPrice > ema20 && ema20 > ema50) score += 5;
+      const status = proximity >= 0.995 ? "🚀 Breaking Out" : proximity >= 0.98 ? "📈 At Resistance" : "🔍 Approaching";
+      signals.push(`${status} | 52W High: ${high52w.toFixed(2)}`);
+      signals.push(`Distance: ${((proximity - 1) * 100).toFixed(2)}% | Volume: ${volumeRatio.toFixed(1)}x`);
+      signals.push(`52W Range: ${low52w.toFixed(2)} – ${high52w.toFixed(2)} | RSI: ${rsi.toFixed(1)}`);
+      return { score, signals };
+    }
+    case "ath_breakout": {
+      const gate = currentPrice >= high52w * 0.98 && volumeRatio >= 1.3;
+      if (!gate) return null;
+      score = currentPrice >= high52w * 0.995 ? 75 : 55;
+      if (volumeRatio >= 3) score += 15;
+      else if (volumeRatio >= 2) score += 10;
+      if (macd.histogram > 0) score += 8;
+      if (rsi >= 55 && rsi < 80) score += 5;
+      signals.push(`🚀 Near/At All-Time High: ${high52w.toFixed(2)}`);
+      signals.push(`Volume: ${volumeRatio.toFixed(1)}x avg | MACD: ${macd.histogram > 0 ? "Bullish ✓" : "Flat"}`);
+      signals.push(`RSI: ${rsi.toFixed(1)}`);
+      return { score, signals };
+    }
+    case "momentum_continuation": {
+      const ret5d = closes.length >= 6 ? (currentPrice - closes[closes.length - 5]) / closes[closes.length - 5] * 100 : 0;
+      const ret20d = closes.length >= 21 ? (currentPrice - closes[closes.length - 20]) / closes[closes.length - 20] * 100 : 0;
+      const gate = ret5d > 1.5 && currentPrice > ema20;
+      if (!gate) return null;
+      score = 42;
+      if (ret20d > 10) score += 18;
+      else if (ret20d > 5) score += 12;
+      else if (ret20d > 3) score += 6;
+      if (macd.histogram > 0) score += 10;
+      if (rsi >= 50 && rsi < 70) score += 8;
+      if (rsi >= 70 && rsi < 80) score += 3;
+      if (volumeRatio > 1.3) score += 8;
+      else if (volumeRatio > 1.0) score += 3;
+      if (currentPrice > ema50) score += 5;
+      if (ema20 > ema50) score += 5;
+      signals.push(`Momentum: +${ret5d.toFixed(1)}% (5d) | +${ret20d.toFixed(1)}% (20d)`);
+      signals.push(`RSI: ${rsi.toFixed(1)} | MACD: ${macd.histogram > 0 ? "Bullish ✓" : "Flat"}`);
+      signals.push(`Above EMA20${currentPrice > ema50 ? " & EMA50 ✓" : ""} | Vol: ${volumeRatio.toFixed(1)}x`);
+      return { score, signals };
+    }
+    case "relative_strength": {
+      const ret30d = closes.length >= 31 ? (currentPrice - closes[closes.length - 30]) / closes[closes.length - 30] * 100 : 0;
+      const ret60d = closes.length >= 61 ? (currentPrice - closes[closes.length - 60]) / closes[closes.length - 60] * 100 : 0;
+      const gate = ret30d > 3 && currentPrice > ema50;
+      if (!gate) return null;
+      score = 42;
+      if (ret60d > 15) score += 18;
+      else if (ret60d > 10) score += 12;
+      else if (ret60d > 5) score += 6;
+      if (ret30d > 10) score += 10;
+      else if (ret30d > 7) score += 6;
+      if (currentPrice > ema20 && ema20 > ema50) score += 8;
+      if (rsi > 55) score += 5;
+      if (volumeRatio > 1.0) score += 3;
+      if (macd.histogram > 0) score += 5;
+      signals.push(`RS Leader: +${ret30d.toFixed(1)}% (30d)${ret60d ? ` | +${ret60d.toFixed(1)}% (60d)` : ""}`);
+      signals.push(`Above EMA50 (${ema50.toFixed(2)}) | RSI: ${rsi.toFixed(1)}`);
+      signals.push(`MACD: ${macd.histogram > 0 ? "Bullish ✓" : "Flat"} | Vol: ${volumeRatio.toFixed(1)}x`);
+      return { score, signals };
+    }
+  }
+  return null;
+}
+
+const SCAN_TYPE_LABELS: Record<string, string> = {
+  ema_alignment: "EMA",
+  volume_spike: "Volume",
+  breakout_52w: "52W High",
+  ath_breakout: "ATH",
+  momentum_continuation: "Momentum",
+  relative_strength: "Rel. Strength",
+};
+
 export async function runRealScanner(options: {
   domain: "india" | "crypto" | "us";
-  scanType: string;
+  scanType: string | string[];
   sector?: string;
   maxResults?: number;
 }): Promise<Array<{
@@ -204,7 +357,13 @@ export async function runRealScanner(options: {
   marketDomain: string; scanType: string;
   stopLoss: number; target: number; riskReward: string;
 }>> {
-  const { domain, scanType, sector, maxResults = 15 } = options;
+  const { domain, sector, maxResults = 15 } = options;
+  // Normalize to an array of scan types. >1 type = confluence (AND) mode:
+  // an asset must pass EVERY selected strategy's gate to be a result.
+  const scanTypes = (Array.isArray(options.scanType) ? options.scanType : [options.scanType])
+    .filter((s, i, arr) => s && arr.indexOf(s) === i); // dedupe, drop empty
+  const isCombo = scanTypes.length > 1;
+  const primaryScanType = scanTypes[0] ?? "ema_alignment";
   const registry = domain === "india" ? NSE_REGISTRY : domain === "crypto" ? CRYPTO_REGISTRY : US_REGISTRY;
 
   let assets = sector ? registry.filter(a => a.sector.toLowerCase() === sector.toLowerCase()) : [...registry];
@@ -225,10 +384,12 @@ export async function runRealScanner(options: {
     const cp = priceMap.get(asset.symbol);
     if (!cp) continue;
 
-    // Fetch real historical data
+    // Fetch real historical data — use the longer window if ANY selected
+    // strategy needs 52w/ATH context, or for relative_strength (needs 60d).
     let candles;
     try {
-      const period = (scanType === "breakout_52w" || scanType === "ath_breakout") ? "1y" : "3mo";
+      const needsLong = scanTypes.some(s => s === "breakout_52w" || s === "ath_breakout" || s === "relative_strength");
+      const period = needsLong ? "1y" : "3mo";
       candles = await getHistory(asset.symbol, period as any, "1d");
     } catch { continue; }
     if (!candles || candles.length < 20) continue;
@@ -267,186 +428,50 @@ export async function runRealScanner(options: {
     const prevEma50 = closesWithCurrent.length > 55 ? emaCalc(closesWithCurrent.slice(0, -5), 50) : ema50;
     const isRecentCrossover = (prevEma20 <= prevEma50 && ema20 > ema50); // Just crossed in last 5 days
 
+    // ─── Evaluate selected strategies ──────────────────────────────
+    // Single type: pass-through. Combination: CONFLUENCE (AND) — every
+    // selected strategy must pass its gate; the blended score is the mean
+    // of component scores plus a confluence bonus that rewards agreement.
+    const ctx: ScanContext = {
+      domain, cp, currentPrice, closes, ema20, ema50, ema200, rsi, macd,
+      volumeRatio, estimatedFullDayVol, high52w, low52w, isRecentCrossover,
+    };
+
     let matches = false, score = 0;
-    const signals: string[] = [];
+    let signals: string[] = [];
 
-    switch (scanType) {
-      // ─── EMA Alignment ────────────────────────────────────────────
-      // GATE: Price > EMA20 > EMA50 (basic bullish stack)
-      // SCORING: EMA200, MACD, RSI, volume, recency
-      case "ema_alignment": {
-        const gate = currentPrice > ema20 && ema20 > ema50;
-        if (!gate) break;
-
+    {
+      const perType = scanTypes.map(t => ({ t, res: evaluateSingleScan(t, ctx) }));
+      const allPass = perType.every(p => p.res !== null);
+      if (allPass && perType.length > 0) {
         matches = true;
-        score = 45; // Base score for passing gate
-
-        // Scoring bonuses
-        if (ema200 > 0 && ema50 > ema200) score += 15; // Full 200 alignment
-        if (ema200 > 0 && currentPrice > ema200) score += 5; // Above 200
-        if (macd.histogram > 0) score += 10; // MACD bullish
-        if (rsi >= 50 && rsi <= 70) score += 8; // Sweet spot RSI
-        if (rsi >= 40 && rsi < 50) score += 3; // Acceptable RSI
-        if (rsi > 75) score -= 8; // Overbought penalty
-        if (volumeRatio > 1.5) score += 8; // Strong volume
-        else if (volumeRatio > 1.2) score += 4; // Decent volume
-        if (isRecentCrossover) score += 12; // Fresh signal bonus
-        const spread = ema50 > 0 ? (ema20 - ema50) / ema50 : 0;
-        if (spread > 0.01) score += 5; // Well-separated EMAs
-
-        signals.push(`EMA Stack: ${currentPrice.toFixed(2)} > ${ema20.toFixed(2)} > ${ema50.toFixed(2)}${ema200 > 0 ? ` > ${ema200.toFixed(2)}` : ""}`);
-        signals.push(`RSI: ${rsi.toFixed(1)} | MACD: ${macd.histogram > 0 ? "+" + macd.histogram.toFixed(2) + " ✓" : macd.histogram.toFixed(2)}`);
-        if (volumeRatio > 1.2) signals.push(`Volume: ${volumeRatio.toFixed(1)}x avg`);
-        if (isRecentCrossover) signals.push(`⚡ Fresh EMA20/50 crossover (last 5 days)`);
-        break;
-      }
-
-      // ─── Volume Spike ─────────────────────────────────────────────
-      // GATE: Volume ≥ 2x avg + price moved > 0.5%
-      // SCORING: magnitude, direction, trend context, RSI
-      case "volume_spike": {
-        const threshold = domain === "crypto" ? 1.8 : 2.0;
-        const gate = volumeRatio >= threshold && Math.abs(cp.changePercent) > 0.5;
-        if (!gate) break;
-
-        matches = true;
-        score = 45;
-
-        // Scoring
-        if (volumeRatio >= 5) score += 30;
-        else if (volumeRatio >= 4) score += 25;
-        else if (volumeRatio >= 3) score += 18;
-        else if (volumeRatio >= 2.5) score += 12;
-        else score += 5;
-        if (cp.changePercent > 0 && currentPrice > ema20) score += 8; // Bullish context
-        if (cp.changePercent < 0 && currentPrice < ema20) score += 5; // Clear bearish (also useful)
-        if (Math.abs(cp.changePercent) > 3) score += 8; // Big move
-        if (rsi < 75 && rsi > 25) score += 3; // Not extreme
-
-        const direction = cp.changePercent > 0 ? "🟢 Bullish" : "🔴 Bearish";
-        signals.push(`${direction} volume spike: ${volumeRatio.toFixed(1)}x avg`);
-        signals.push(`Move: ${cp.changePercent > 0 ? "+" : ""}${cp.changePercent.toFixed(2)}% | Est. Vol: ${(estimatedFullDayVol / 100000).toFixed(1)}L`);
-        signals.push(`RSI: ${rsi.toFixed(1)} | Trend: ${currentPrice > ema50 ? "Above EMA50" : "Below EMA50"}`);
-        break;
-      }
-
-      // ─── 52-Week High Breakout ────────────────────────────────────
-      // GATE: Price within 5% of 52-week high
-      // SCORING: proximity, volume, RSI zone
-      case "breakout_52w": {
-        const gate = currentPrice >= high52w * 0.95; // Within 5% of high
-        if (!gate) break;
-
-        matches = true;
-        const proximity = (currentPrice / high52w);
-        score = proximity >= 0.995 ? 70 : proximity >= 0.98 ? 55 : 45; // Closer = higher base
-
-        // Scoring
-        if (volumeRatio >= 2.5) score += 15;
-        else if (volumeRatio >= 1.5) score += 10;
-        else if (volumeRatio >= 1.2) score += 5;
-        if (rsi >= 55 && rsi <= 75) score += 8; // Momentum zone
-        if (rsi > 80) score -= 8; // Exhaustion risk
-        if (macd.histogram > 0) score += 5;
-        if (currentPrice > ema20 && ema20 > ema50) score += 5; // Trend support
-
-        const status = proximity >= 0.995 ? "🚀 Breaking Out" : proximity >= 0.98 ? "📈 At Resistance" : "🔍 Approaching";
-        signals.push(`${status} | 52W High: ${high52w.toFixed(2)}`);
-        signals.push(`Distance: ${((proximity - 1) * 100).toFixed(2)}% | Volume: ${volumeRatio.toFixed(1)}x`);
-        signals.push(`52W Range: ${low52w.toFixed(2)} – ${high52w.toFixed(2)} | RSI: ${rsi.toFixed(1)}`);
-        break;
-      }
-
-      // ─── ATH Breakout ─────────────────────────────────────────────
-      // GATE: Price within 2% of all-time high + volume above average
-      // SCORING: volume strength, MACD
-      case "ath_breakout": {
-        const gate = currentPrice >= high52w * 0.98 && volumeRatio >= 1.3;
-        if (!gate) break;
-
-        matches = true;
-        score = currentPrice >= high52w * 0.995 ? 75 : 55;
-
-        if (volumeRatio >= 3) score += 15;
-        else if (volumeRatio >= 2) score += 10;
-        if (macd.histogram > 0) score += 8;
-        if (rsi >= 55 && rsi < 80) score += 5;
-
-        signals.push(`🚀 Near/At All-Time High: ${high52w.toFixed(2)}`);
-        signals.push(`Volume: ${volumeRatio.toFixed(1)}x avg | MACD: ${macd.histogram > 0 ? "Bullish ✓" : "Flat"}`);
-        signals.push(`RSI: ${rsi.toFixed(1)}`);
-        break;
-      }
-
-      // ─── Momentum Continuation ────────────────────────────────────
-      // GATE: 5-day return > 1.5% + price above EMA20
-      // SCORING: 20-day return, MACD, volume, RSI quality
-      case "momentum_continuation": {
-        const ret5d = closes.length >= 6 ? (currentPrice - closes[closes.length - 5]) / closes[closes.length - 5] * 100 : 0;
-        const ret20d = closes.length >= 21 ? (currentPrice - closes[closes.length - 20]) / closes[closes.length - 20] * 100 : 0;
-
-        const gate = ret5d > 1.5 && currentPrice > ema20;
-        if (!gate) break;
-
-        matches = true;
-        score = 42;
-
-        // Scoring
-        if (ret20d > 10) score += 18;
-        else if (ret20d > 5) score += 12;
-        else if (ret20d > 3) score += 6;
-        if (macd.histogram > 0) score += 10;
-        if (rsi >= 50 && rsi < 70) score += 8;
-        if (rsi >= 70 && rsi < 80) score += 3; // Still ok but less ideal
-        if (volumeRatio > 1.3) score += 8;
-        else if (volumeRatio > 1.0) score += 3;
-        if (currentPrice > ema50) score += 5;
-        if (ema20 > ema50) score += 5; // Trend structure
-
-        signals.push(`Momentum: +${ret5d.toFixed(1)}% (5d) | +${ret20d.toFixed(1)}% (20d)`);
-        signals.push(`RSI: ${rsi.toFixed(1)} | MACD: ${macd.histogram > 0 ? "Bullish ✓" : "Flat"}`);
-        signals.push(`Above EMA20${currentPrice > ema50 ? " & EMA50 ✓" : ""} | Vol: ${volumeRatio.toFixed(1)}x`);
-        break;
-      }
-
-      // ─── Relative Strength ────────────────────────────────────────
-      // GATE: 30-day return > 3% + above EMA50
-      // SCORING: 60-day return, EMA structure, RSI, volume
-      case "relative_strength": {
-        const ret30d = closes.length >= 31 ? (currentPrice - closes[closes.length - 30]) / closes[closes.length - 30] * 100 : 0;
-        const ret60d = closes.length >= 61 ? (currentPrice - closes[closes.length - 60]) / closes[closes.length - 60] * 100 : 0;
-
-        const gate = ret30d > 3 && currentPrice > ema50;
-        if (!gate) break;
-
-        matches = true;
-        score = 42;
-
-        // Scoring
-        if (ret60d > 15) score += 18;
-        else if (ret60d > 10) score += 12;
-        else if (ret60d > 5) score += 6;
-        if (ret30d > 10) score += 10;
-        else if (ret30d > 7) score += 6;
-        if (currentPrice > ema20 && ema20 > ema50) score += 8; // Full structure
-        if (rsi > 55) score += 5;
-        if (volumeRatio > 1.0) score += 3;
-        if (macd.histogram > 0) score += 5;
-
-        signals.push(`RS Leader: +${ret30d.toFixed(1)}% (30d)${ret60d ? ` | +${ret60d.toFixed(1)}% (60d)` : ""}`);
-        signals.push(`Above EMA50 (${ema50.toFixed(2)}) | RSI: ${rsi.toFixed(1)}`);
-        signals.push(`MACD: ${macd.histogram > 0 ? "Bullish ✓" : "Flat"} | Vol: ${volumeRatio.toFixed(1)}x`);
-        break;
+        const scores = perType.map(p => p.res!.score);
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        if (isCombo) {
+          // Confluence bonus: +6 per extra confirming strategy (capped +18).
+          const confluenceBonus = Math.min(18, (perType.length - 1) * 6);
+          score = avg + confluenceBonus;
+          signals.push(`🎯 Confluence: ${perType.map(p => SCAN_TYPE_LABELS[p.t] ?? p.t).join(" + ")} (${perType.length} strategies agree)`);
+          // Merge component signals (deduped), keep it readable.
+          const merged = new Set<string>();
+          for (const p of perType) for (const s of p.res!.signals) merged.add(s);
+          signals.push(...merged);
+        } else {
+          score = avg;
+          signals = perType[0].res!.signals;
+        }
       }
     }
 
+    // ─── DEAD_SWITCH_START (removed below) ───
     if (matches && score >= 40) {
-      // Calculate stop loss and target based on scan type and ATR
+      // Calculate stop loss and target based on the primary scan type and ATR.
+      // In combination mode, the FIRST selected strategy drives SL/target.
       const atr = atr14;
       let stopLoss: number;
       let target: number;
 
-      switch (scanType) {
+      switch (primaryScanType) {
         case "ema_alignment":
           // SL below EMA20 or 1.5x ATR below current price
           stopLoss = Math.round(Math.max(ema20 * 0.99, currentPrice - atr * 1.5) * 100) / 100;
@@ -496,7 +521,8 @@ export async function runRealScanner(options: {
         price: cp.price, changePercent: cp.changePercent, volume: cp.volume,
         qualityScore: Math.min(100, Math.round(score)),
         confidence: score >= 80 ? "high" : score >= 60 ? "medium" : "low",
-        signals, marketDomain: domain, scanType,
+        signals, marketDomain: domain,
+        scanType: scanTypes.join("+"), // e.g. "ema_alignment+relative_strength"
         stopLoss, target, riskReward,
       });
     }

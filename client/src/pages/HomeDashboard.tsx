@@ -51,11 +51,11 @@ function MarketDomainCard({
             </div>
             <div>
               <div className="text-sm font-bold text-foreground">{title}</div>
-              <div className="text-[10px] text-muted-foreground">{subtitle}</div>
+              <div className="text-2xs text-muted-foreground">{subtitle}</div>
             </div>
           </div>
           {badge && (
-            <span className={cn("text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full", badgeClass)}>
+            <span className={cn("text-3xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full", badgeClass)}>
               {badge}
             </span>
           )}
@@ -67,11 +67,11 @@ function MarketDomainCard({
         ) : (
           <div className="mt-2">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-2xs text-muted-foreground">
                 {title === "Crypto Market" ? "Fear & Greed" : "Market Sentiment"}
               </span>
-              <span className={cn("text-[10px] font-semibold uppercase",
-                state === "bullish" ? "text-bull" : state === "bearish" ? "text-bear" : "text-[oklch(0.65_0.12_80)]"
+              <span className={cn("text-2xs font-semibold uppercase",
+                state === "bullish" ? "text-bull" : state === "bearish" ? "text-bear" : "text-warning"
               )}>
                 {state}
               </span>
@@ -79,18 +79,18 @@ function MarketDomainCard({
             <div className="h-1.5 bg-surface-2 rounded-full overflow-hidden">
               <div
                 className={cn("h-full rounded-full transition-all duration-500",
-                  state === "bullish" ? "bg-bull" : state === "bearish" ? "bg-bear" : "bg-[oklch(0.65_0.12_80)]"
+                  state === "bullish" ? "bg-bull" : state === "bearish" ? "bg-bear" : "bg-[var(--color-warning)]"
                 )}
                 style={{ width: `${Math.min(100, Math.max(0, 50 + (score / 2)))}%` }}
               />
             </div>
             {title === "Crypto Market" && sentiment?.fearGreedIndex !== undefined && (
-              <div className="text-[10px] text-muted-foreground mt-1">
+              <div className="text-2xs text-muted-foreground mt-1">
                 Fear & Greed: <span className="text-foreground font-medium">{sentiment.fearGreedIndex.toFixed(0)}/100</span>
               </div>
             )}
             {title === "US Market" && sentiment?.spxChange !== undefined && (
-              <div className={cn("text-[10px] mt-1 font-medium", sentiment.spxChange >= 0 ? "text-bull" : "text-bear")}>
+              <div className={cn("text-2xs mt-1 font-medium", sentiment.spxChange >= 0 ? "text-bull" : "text-bear")}>
                 S&P 500: {sentiment.spxChange >= 0 ? "+" : ""}{sentiment.spxChange.toFixed(2)}%
               </div>
             )}
@@ -101,7 +101,7 @@ function MarketDomainCard({
       {/* Top movers */}
       <div className="flex-1 p-3 grid grid-cols-2 gap-2">
         <div>
-          <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <div className="text-3xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
             <TrendingUp className="w-2.5 h-2.5 text-bull" /> Top Gainers
           </div>
           {isLoading ? (
@@ -110,10 +110,10 @@ function MarketDomainCard({
             <div className="space-y-1">
               {(topGainers ?? []).slice(0, 3).map(a => (
                 <div key={a.symbol} className="flex items-center justify-between">
-                  <span className="text-[10px] font-medium text-foreground">{a.symbol}</span>
+                  <span className="text-2xs font-medium text-foreground">{a.symbol}</span>
                   <div className="flex items-center gap-1.5">
                     <Sparkline data={generateSparklineData(12, "up")} width={36} height={14} color="bull" strokeWidth={1} showArea={false} />
-                    <span className="text-[10px] font-semibold text-bull tabular-nums">+{a.changePercent.toFixed(2)}%</span>
+                    <span className="text-2xs font-semibold text-bull tabular-nums">+{a.changePercent.toFixed(2)}%</span>
                   </div>
                 </div>
               ))}
@@ -121,7 +121,7 @@ function MarketDomainCard({
           )}
         </div>
         <div>
-          <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+          <div className="text-3xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
             <TrendingDown className="w-2.5 h-2.5 text-bear" /> Top Losers
           </div>
           {isLoading ? (
@@ -130,10 +130,10 @@ function MarketDomainCard({
             <div className="space-y-1">
               {(topLosers ?? []).slice(0, 3).map(a => (
                 <div key={a.symbol} className="flex items-center justify-between">
-                  <span className="text-[10px] font-medium text-foreground">{a.symbol}</span>
+                  <span className="text-2xs font-medium text-foreground">{a.symbol}</span>
                   <div className="flex items-center gap-1.5">
                     <Sparkline data={generateSparklineData(12, "down")} width={36} height={14} color="bear" strokeWidth={1} showArea={false} />
-                    <span className="text-[10px] font-semibold text-bear tabular-nums">{a.changePercent.toFixed(2)}%</span>
+                    <span className="text-2xs font-semibold text-bear tabular-nums">{a.changePercent.toFixed(2)}%</span>
                   </div>
                 </div>
               ))}
@@ -167,7 +167,7 @@ function QuickNavTile({ href, icon, label, description, accentClass }: {
         </div>
         <div className="min-w-0">
           <div className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">{label}</div>
-          <div className="text-[10px] text-muted-foreground truncate">{description}</div>
+          <div className="text-2xs text-muted-foreground truncate">{description}</div>
         </div>
         <ArrowRight className="w-3.5 h-3.5 text-muted-foreground ml-auto shrink-0 group-hover:text-primary transition-colors" />
       </div>
@@ -177,12 +177,25 @@ function QuickNavTile({ href, icon, label, description, accentClass }: {
 
 // ─── Home Dashboard ───────────────────────────────────────────────────────────
 export default function HomeDashboard() {
-  const { data: overview, isLoading, refetch, isFetching } = trpc.global.overview.useQuery(undefined, {
+  const { data: overview, isLoading, isError, refetch, isFetching } = trpc.global.overview.useQuery(undefined, {
     refetchInterval: 60000,
   });
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-[fade-up_0.3s_ease-out]">
+      {/* Error banner — surfaces query failure instead of showing empty widgets */}
+      {isError && !overview && (
+        <div className="pf-card p-4 flex items-center gap-3 border-l-2 border-l-danger bg-danger-subtle" role="alert">
+          <AlertCircle className="w-4 h-4 text-danger shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-medium text-foreground">Couldn't load market overview</div>
+            <div className="text-2xs text-muted-foreground">Check your connection and retry — live data will resume automatically.</div>
+          </div>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5 shrink-0" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={cn("w-3 h-3", isFetching && "animate-spin")} /> Retry
+          </Button>
+        </div>
+      )}
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
@@ -286,7 +299,7 @@ export default function HomeDashboard() {
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Flag className="w-4 h-4 text-[oklch(0.65_0.20_40)]" />
             India Top Gainers
-            <span className="text-[10px] text-muted-foreground font-normal">(NSE only)</span>
+            <span className="text-2xs text-muted-foreground font-normal">(NSE only)</span>
           </h2>
           {isLoading ? (
             <div className="pf-card p-4 space-y-2">{[0,1,2,3,4].map(i => <Skeleton key={i} className="h-8 w-full" />)}</div>
@@ -296,6 +309,7 @@ export default function HomeDashboard() {
                 ...a, currency: "INR",
               }))}
               showRank
+              showSparkline
               compact
             />
           )}
@@ -304,7 +318,7 @@ export default function HomeDashboard() {
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Bitcoin className="w-4 h-4 text-[oklch(0.60_0.22_290)]" />
             Crypto Top Gainers
-            <span className="text-[10px] text-muted-foreground font-normal">(Crypto only)</span>
+            <span className="text-2xs text-muted-foreground font-normal">(Crypto only)</span>
           </h2>
           {isLoading ? (
             <div className="pf-card p-4 space-y-2">{[0,1,2,3,4].map(i => <Skeleton key={i} className="h-8 w-full" />)}</div>
@@ -314,6 +328,7 @@ export default function HomeDashboard() {
                 ...a, currency: "USD",
               }))}
               showRank
+              showSparkline
               compact
             />
           )}
@@ -325,7 +340,7 @@ export default function HomeDashboard() {
         <AlertCircle className="w-4 h-4 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="text-xs font-medium text-foreground">Data is rule-based simulation</div>
-          <div className="text-[10px] text-muted-foreground">
+          <div className="text-2xs text-muted-foreground">
             All prices, sector scores, and indicators are generated using deterministic market logic for demonstration purposes.
           </div>
         </div>

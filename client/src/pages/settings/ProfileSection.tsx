@@ -167,7 +167,7 @@ export function ProfileSection({ prefs, onUpdate, isSaving, user: userProp }: Pr
               <div key={item.label} className="bg-muted/20 rounded-xl p-3 text-center">
                 <p className="text-xs text-muted-foreground">{item.label}</p>
                 <p className="text-sm font-bold text-foreground mt-1">{item.value}</p>
-                <p className="text-xs text-muted-foreground/60">{item.sub}</p>
+                <p className="text-xs text-muted-foreground">{item.sub}</p>
               </div>
             ))}
           </div>
@@ -210,7 +210,7 @@ export function ProfileSection({ prefs, onUpdate, isSaving, user: userProp }: Pr
       {/* Last Sync */}
       <div className="flex items-center gap-2 px-1">
         <Clock className="w-3.5 h-3.5 text-muted-foreground/50" />
-        <p className="text-xs text-muted-foreground/60">
+        <p className="text-xs text-muted-foreground">
           Last full sync: {lastSync.toLocaleString()} · Member since {new Date(user?.createdAt ?? Date.now()).toLocaleDateString()}
         </p>
       </div>

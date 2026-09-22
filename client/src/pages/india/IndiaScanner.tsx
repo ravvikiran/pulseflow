@@ -5,6 +5,7 @@ import { Zap, RefreshCw, Filter, BarChart3, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StateView, QueryErrorState } from "@/components/shared/StateView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -58,23 +59,23 @@ function ScanResultCard({ result, currency = "INR" }: {
     ? (result.price > ema20 && ema20 > ema50 ? "bullish" : result.price < ema20 ? "bearish" : "neutral")
     : "neutral";
 
-  const confidenceColor = result.confidence === "high" ? "text-bull" : result.confidence === "medium" ? "text-[oklch(0.65_0.12_80)]" : "text-muted-foreground";
+  const confidenceColor = result.confidence === "high" ? "text-bull" : result.confidence === "medium" ? "text-warning" : "text-muted-foreground";
 
   return (
     <div className="pf-card-hover p-3 space-y-2">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center shrink-0">
-            <span className="text-[9px] font-bold text-primary">{result.symbol.slice(0, 2)}</span>
+            <span className="text-3xs font-bold text-primary">{result.symbol.slice(0, 2)}</span>
           </div>
           <div>
             <div className="text-xs font-bold text-foreground">{result.symbol}</div>
-            {result.name && <div className="text-[9px] text-muted-foreground truncate max-w-[120px]">{result.name}</div>}
+            {result.name && <div className="text-3xs text-muted-foreground truncate max-w-[120px]">{result.name}</div>}
           </div>
         </div>
         <div className="text-right shrink-0">
           <div className="text-sm font-bold font-mono tabular-nums text-foreground">{fmtPrice(result.price)}</div>
-          <div className={cn("text-[10px] font-semibold tabular-nums", isPositive ? "text-bull" : "text-bear")}>
+          <div className={cn("text-2xs font-semibold tabular-nums", isPositive ? "text-bull" : "text-bear")}>
             {isPositive ? "+" : ""}{changePct.toFixed(2)}%
           </div>
         </div>
@@ -83,15 +84,15 @@ function ScanResultCard({ result, currency = "INR" }: {
       {/* Signals */}
       <div className="flex flex-wrap gap-1">
         {result.signals.slice(0, 3).map(sig => (
-          <span key={sig} className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{sig}</span>
+          <span key={sig} className="text-3xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{sig}</span>
         ))}
         {result.details?.volumeConfirmed && (
-          <span className="text-[9px] px-1.5 py-0.5 rounded bg-bull/10 text-bull font-medium">Vol ✓</span>
+          <span className="text-3xs px-1.5 py-0.5 rounded bg-bull/10 text-bull font-medium">Vol ✓</span>
         )}
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-1 text-[9px]">
+      <div className="grid grid-cols-3 gap-1 text-3xs">
         <div className="bg-surface-2 rounded p-1 text-center">
           <div className="text-muted-foreground">Stop Loss</div>
           <div className="font-bold tabular-nums text-bear">{(result as any).stopLoss ? fmtPrice((result as any).stopLoss) : "—"}</div>
@@ -107,28 +108,28 @@ function ScanResultCard({ result, currency = "INR" }: {
       </div>
 
       {/* Quality row */}
-      <div className="grid grid-cols-3 gap-1 text-[9px]">
+      <div className="grid grid-cols-3 gap-1 text-3xs">
         <div className="bg-surface-2 rounded p-1 text-center">
           <div className="text-muted-foreground">Vol Ratio</div>
           <div className={cn("font-bold tabular-nums", (result.volumeRatio ?? 0) >= 2 ? "text-bull" : "text-foreground")}>{(result.volumeRatio ?? 1).toFixed(1)}x</div>
         </div>
         <div className="bg-surface-2 rounded p-1 text-center">
           <div className="text-muted-foreground">EMA</div>
-          <div className={cn("font-bold", emaAlignment === "bullish" ? "text-bull" : emaAlignment === "bearish" ? "text-bear" : "text-[oklch(0.65_0.12_80)]")}>{emaAlignment}</div>
+          <div className={cn("font-bold", emaAlignment === "bullish" ? "text-bull" : emaAlignment === "bearish" ? "text-bear" : "text-warning")}>{emaAlignment}</div>
         </div>
         <div className="bg-surface-2 rounded p-1 text-center">
           <div className="text-muted-foreground">Quality</div>
-          <div className={cn("font-bold tabular-nums", result.qualityScore >= 70 ? "text-bull" : result.qualityScore >= 40 ? "text-[oklch(0.65_0.12_80)]" : "text-bear")}>{result.qualityScore}</div>
+          <div className={cn("font-bold tabular-nums", result.qualityScore >= 70 ? "text-bull" : result.qualityScore >= 40 ? "text-warning" : "text-bear")}>{result.qualityScore}</div>
         </div>
       </div>
 
       <div className="flex items-center justify-between">
         {result.sector && (
-          <div className="text-[9px] text-muted-foreground truncate">Sector: <span className="text-foreground">{result.sector}</span></div>
+          <div className="text-3xs text-muted-foreground truncate">Sector: <span className="text-foreground">{result.sector}</span></div>
         )}
         <div className="flex items-center gap-2 ml-auto">
           <SaveTradeButton result={result} />
-          <span className={cn("text-[9px] font-semibold", confidenceColor)}>{result.confidence.toUpperCase()}</span>
+          <span className={cn("text-3xs font-semibold", confidenceColor)}>{result.confidence.toUpperCase()}</span>
         </div>
       </div>
     </div>
@@ -197,7 +198,7 @@ function SaveTradeButton({ result }: { result: any }) {
         signals: result.signals ?? [],
       })}
       disabled={saveMutation.isPending}
-      className="text-[9px] px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors"
+      className="text-3xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors"
     >
       {saveMutation.isPending ? "Saving..." : "📌 Save Trade"}
     </button>
@@ -219,7 +220,7 @@ export default function IndiaScanner() {
     volumeMultiplier: 2.0,
   }), [scanType, timeframe, sector, minQualityScore]);
 
-  const { data: results, isLoading, refetch, isFetching } = trpc.india.scanner.useQuery(
+  const { data: results, isLoading, isError, refetch, isFetching } = trpc.india.scanner.useQuery(
     queryInput,
     { refetchInterval: 120000 }
   );
@@ -234,11 +235,11 @@ export default function IndiaScanner() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-foreground">NSE Market Scanner</h1>
-            <p className="text-[11px] text-muted-foreground">Improved accuracy engine — EMA alignment, volume spikes, breakouts — NSE stocks only</p>
+            <p className="text-xs text-muted-foreground">Improved accuracy engine — EMA alignment, volume spikes, breakouts — NSE stocks only</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className="badge-bull text-[9px]">NSE Only</Badge>
+          <Badge className="badge-bull text-3xs">NSE Only</Badge>
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={cn("w-3 h-3", isFetching && "animate-spin")} />
           </Button>
@@ -250,11 +251,11 @@ export default function IndiaScanner() {
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-primary" />
           <span className="text-sm font-semibold text-foreground">Scanner Filters</span>
-          <Badge variant="outline" className="text-[9px] ml-auto">Improved Engine v2</Badge>
+          <Badge variant="outline" className="text-3xs ml-auto">Improved Engine v2</Badge>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Scan Type</Label>
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Scan Type</Label>
             <Select value={scanType} onValueChange={(v) => setScanType(v as ScanType)}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
@@ -267,7 +268,7 @@ export default function IndiaScanner() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Timeframe</Label>
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Timeframe</Label>
             <Select value={timeframe} onValueChange={(v) => setTimeframe(v as Timeframe)}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
@@ -280,7 +281,7 @@ export default function IndiaScanner() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">NSE Sector</Label>
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">NSE Sector</Label>
             <Select value={sector ?? "all"} onValueChange={v => setSector(v === "all" ? undefined : v)}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder="All Sectors" />
@@ -294,7 +295,7 @@ export default function IndiaScanner() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">
               Min Quality Score: <span className="text-foreground font-semibold">{minQualityScore}</span>
             </Label>
             <Select value={String(minQualityScore)} onValueChange={v => setMinQualityScore(Number(v))}>
@@ -322,14 +323,14 @@ export default function IndiaScanner() {
             <BarChart3 className="w-4 h-4 text-primary" />
             Scan Results
             {results && (
-              <Badge variant="outline" className="text-[9px] ml-1">{results.length} matches</Badge>
+              <Badge variant="outline" className="text-3xs ml-1">{results.length} matches</Badge>
             )}
           </h2>
           <div className="flex items-center gap-2">
             {results && results.length > 0 && (
               <CopyToTradingViewButton symbols={results.map(r => r.symbol)} />
             )}
-            <div className="text-[10px] text-muted-foreground">
+            <div className="text-2xs text-muted-foreground">
               {SCAN_TYPES.find(t => t.value === scanType)?.label} · {timeframe} · NSE
             </div>
           </div>
@@ -339,6 +340,15 @@ export default function IndiaScanner() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-36 rounded-lg" />)}
           </div>
+        ) : isError ? (
+          <div className="pf-card">
+            <QueryErrorState
+              onRetry={() => refetch()}
+              isRetrying={isFetching}
+              title="Scan failed"
+              description="The NSE scanner couldn't complete. Check your connection and retry."
+            />
+          </div>
         ) : results && results.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {results.map(r => (
@@ -346,10 +356,12 @@ export default function IndiaScanner() {
             ))}
           </div>
         ) : (
-          <div className="pf-card p-8 text-center">
-            <Zap className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <div className="text-sm text-muted-foreground">No NSE stocks match the current scan criteria.</div>
-            <div className="text-[11px] text-muted-foreground mt-1">Try lowering the minimum quality score or adjusting the scan type.</div>
+          <div className="pf-card">
+            <StateView
+              icon={<Zap className="w-8 h-8 text-muted-foreground/40" />}
+              title="No NSE stocks match the current scan criteria"
+              description="Try lowering the minimum quality score or adjusting the scan type."
+            />
           </div>
         )}
       </div>

@@ -9,10 +9,14 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import PulseFlowLayout from "./components/PulseFlowLayout";
 import { PageTransition } from "./components/PageTransition";
 import { SplashScreen } from "./components/SplashScreen";
-import { CommandPalette } from "./components/CommandPalette";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { OfflineBanner } from "./components/OfflineBanner";
-import { AchievementOverlay } from "./components/Confetti";
+
+// Deferred, non-critical chrome — kept off the initial render path.
+// CommandPalette only appears on Ctrl/Cmd+K; the achievement overlay is
+// idle until an achievement fires. Loading them lazily trims the main bundle.
+const CommandPalette = lazy(() => import("./components/CommandPalette").then(m => ({ default: m.CommandPalette })));
+const AchievementOverlay = lazy(() => import("./components/Confetti").then(m => ({ default: m.AchievementOverlay })));
 
 // ─── Lazy-loaded Pages ────────────────────────────────────────────────────────
 const HomeDashboard = lazy(() => import("./pages/HomeDashboard"));
@@ -49,10 +53,23 @@ const Scanner = lazy(() => import("./pages/Scanner"));
 // ─── Page Loading Skeleton ────────────────────────────────────────────────────
 function PageSkeleton() {
   return (
-    <div className="p-4 md:p-6 space-y-4 animate-pulse">
-      <div className="h-8 w-64 bg-surface-2 rounded-md" />
-      <div className="h-4 w-96 bg-surface-2 rounded-md" />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+    <div className="p-4 md:p-6 space-y-5 animate-pulse">
+      {/* Header row: title/subtitle + action — matches every page's top bar */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <div className="h-6 w-56 bg-surface-2 rounded-md" />
+          <div className="h-3.5 w-80 bg-surface-2 rounded-md" />
+        </div>
+        <div className="h-8 w-24 bg-surface-2 rounded-md shrink-0" />
+      </div>
+      {/* Compact stat/index strip — mirrors dashboards' above-the-fold row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} className="h-14 bg-surface-2 rounded-lg" />
+        ))}
+      </div>
+      {/* Primary content */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[0, 1, 2].map(i => (
           <div key={i} className="h-48 bg-surface-2 rounded-lg" />
         ))}
@@ -139,8 +156,10 @@ function App() {
             <>
               <Toaster />
               <OfflineBanner />
-              <AchievementOverlay />
-              <CommandPalette />
+              <Suspense fallback={null}>
+                <AchievementOverlay />
+                <CommandPalette />
+              </Suspense>
               <KeyboardShortcuts />
               <Router />
             </>

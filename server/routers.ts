@@ -77,6 +77,11 @@ const IMPROVED_SCAN_TYPES = z.enum([
 
 const IMPROVED_TIMEFRAMES = z.enum(["15M", "1H", "4H", "1D", "1W"]);
 
+// Optional multi-select for confluence scans. When provided (length >= 1),
+// it takes precedence over the single `scanType`. 1 = normal scan, >1 = AND.
+const IMPROVED_SCAN_TYPES_ARRAY = z.array(IMPROVED_SCAN_TYPES).min(1).max(6).optional();
+const SCAN_TYPES_ARRAY = z.array(SCAN_TYPES).min(1).max(7).optional();
+
 const PATTERN_TIMEFRAMES = z.enum(["15m", "1h", "4h", "1d", "1w"]);
 
 // ─── Global Market Router ─────────────────────────────────────────────────────
@@ -300,6 +305,7 @@ const indiaRouter = router({
   scanner: publicProcedure
     .input(z.object({
       scanType: IMPROVED_SCAN_TYPES,
+      scanTypes: IMPROVED_SCAN_TYPES_ARRAY,
       timeframe: IMPROVED_TIMEFRAMES.default("1D"),
       sector: z.string().optional(),
       minQualityScore: z.number().default(30),
@@ -312,7 +318,7 @@ const indiaRouter = router({
       }
       return runRealScanner({
         domain: "india",
-        scanType: input.scanType,
+        scanType: input.scanTypes ?? input.scanType,
         sector: input.sector,
         maxResults: input.maxResults,
       });
@@ -524,6 +530,7 @@ const cryptoRouter = router({
   scanner: publicProcedure
     .input(z.object({
       scanType: IMPROVED_SCAN_TYPES,
+      scanTypes: IMPROVED_SCAN_TYPES_ARRAY,
       timeframe: IMPROVED_TIMEFRAMES.default("1D"),
       minQualityScore: z.number().default(30),
       maxResults: z.number().default(20),
@@ -532,7 +539,7 @@ const cryptoRouter = router({
     .query(async ({ input }) => {
       return runRealScanner({
         domain: "crypto",
-        scanType: input.scanType,
+        scanType: input.scanTypes ?? input.scanType,
         maxResults: input.maxResults,
       });
     }),
@@ -663,6 +670,7 @@ const usRouter = router({
   scanner: publicProcedure
     .input(z.object({
       scanType: SCAN_TYPES,
+      scanTypes: SCAN_TYPES_ARRAY,
       timeframe: z.string().default("1d"),
       sector: z.string().optional(),
       minVolumeRatio: z.number().default(2.0),
@@ -670,7 +678,7 @@ const usRouter = router({
     .query(async ({ input }) => {
       return runRealScanner({
         domain: "us",
-        scanType: input.scanType,
+        scanType: input.scanTypes ?? input.scanType,
         sector: input.sector,
         maxResults: 15,
       });

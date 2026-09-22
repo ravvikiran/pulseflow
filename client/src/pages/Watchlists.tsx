@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StateView } from "@/components/shared/StateView";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
@@ -27,8 +28,23 @@ function fmtPct(n: number | null | undefined) {
 function WatchlistCard({ watchlist, onSelect, isSelected }: {
   watchlist: any; onSelect: () => void; isSelected: boolean;
 }) {
+  const utils = trpc.useUtils();
   const deleteMutation = trpc.watchlists.delete.useMutation({
+    // Optimistic: remove the card instantly, restore on failure.
+    onMutate: async ({ id }) => {
+      await utils.watchlists.list.cancel();
+      const previous = utils.watchlists.list.getData();
+      utils.watchlists.list.setData(undefined, (old: any) =>
+        old ? old.filter((wl: any) => wl.id !== id) : old
+      );
+      return { previous };
+    },
     onSuccess: () => toast.success("Watchlist deleted"),
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) utils.watchlists.list.setData(undefined, ctx.previous);
+      toast.error("Couldn't delete watchlist — restored");
+    },
+    onSettled: () => { utils.watchlists.list.invalidate(); },
   });
 
   return (
@@ -47,18 +63,19 @@ function WatchlistCard({ watchlist, onSelect, isSelected }: {
           <div>
             <div className="text-sm font-semibold text-foreground">{watchlist.name}</div>
             {watchlist.description && (
-              <div className="text-[10px] text-muted-foreground">{watchlist.description}</div>
+              <div className="text-2xs text-muted-foreground">{watchlist.description}</div>
             )}
           </div>
         </div>
         <button
-          className="opacity-0 group-hover:opacity-100 hover:text-bear transition-all"
+          aria-label={`Delete watchlist ${watchlist.name}`}
+          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-bear transition-all p-2 -m-1 rounded focus-ring"
           onClick={(e) => { e.stopPropagation(); deleteMutation.mutate({ id: watchlist.id }); }}
         >
           <Trash2 className="w-3.5 h-3.5 text-muted-foreground hover:text-bear transition-colors" />
         </button>
       </div>
-      <div className="mt-2 text-[10px] text-muted-foreground">
+      <div className="mt-2 text-2xs text-muted-foreground">
         {new Date(watchlist.createdAt).toLocaleDateString()}
       </div>
     </div>
@@ -79,7 +96,20 @@ function WatchlistDetail({ watchlistId }: { watchlistId: number }) {
     onSuccess: () => { utils.watchlists.detail.invalidate(); toast.success("Asset added to watchlist"); setSearchQuery(""); },
   });
   const removeMutation = trpc.watchlists.removeItem.useMutation({
-    onSuccess: () => { utils.watchlists.detail.invalidate(); toast.success("Asset removed"); },
+    // Optimistic: drop the row immediately, roll back if the server rejects.
+    onMutate: async ({ assetId }) => {
+      await utils.watchlists.detail.cancel({ id: watchlistId });
+      const previous = utils.watchlists.detail.getData({ id: watchlistId });
+      utils.watchlists.detail.setData({ id: watchlistId }, (old: any) =>
+        old ? { ...old, items: (old.items ?? []).filter((it: any) => it.item.assetId !== assetId) } : old
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) utils.watchlists.detail.setData({ id: watchlistId }, ctx.previous);
+      toast.error("Couldn't remove asset — restored");
+    },
+    onSettled: () => { utils.watchlists.detail.invalidate(); },
   });
 
   if (isLoading) return <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-14 rounded" />)}</div>;
@@ -120,11 +150,11 @@ function WatchlistDetail({ watchlistId }: { watchlistId: number }) {
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                      <span className="text-[9px] font-bold text-primary">{asset.symbol.slice(0, 2)}</span>
+                      <span className="text-3xs font-bold text-primary">{asset.symbol.slice(0, 2)}</span>
                     </div>
                     <div>
                       <div className="text-xs font-medium text-foreground">{asset.symbol}</div>
-                      <div className="text-[10px] text-muted-foreground">{asset.name}</div>
+                      <div className="text-2xs text-muted-foreground">{asset.name}</div>
                     </div>
                   </div>
                   <Plus className="w-3.5 h-3.5 text-primary" />
@@ -137,14 +167,14 @@ function WatchlistDetail({ watchlistId }: { watchlistId: number }) {
 
       {/* Items */}
       {!data.items || data.items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <Bookmark className="w-10 h-10 text-muted-foreground/30 mb-3" />
-          <div className="text-sm text-muted-foreground">No assets in this watchlist</div>
-          <div className="text-xs text-muted-foreground/60 mt-1">Click "Add Asset" to get started</div>
-        </div>
+        <StateView
+          icon={<Bookmark className="w-10 h-10 text-muted-foreground/30" />}
+          title="No assets in this watchlist"
+          description={'Click "Add Asset" to get started.'}
+        />
       ) : (
         <div className="pf-card overflow-hidden">
-          <div className="grid grid-cols-12 px-4 py-2 border-b border-border bg-muted/30 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+          <div className="grid grid-cols-12 px-4 py-2 border-b border-border bg-muted/30 text-2xs uppercase tracking-wider text-muted-foreground font-semibold">
             <div className="col-span-4">Asset</div>
             <div className="col-span-2">Price</div>
             <div className="col-span-2">Change</div>
@@ -159,13 +189,13 @@ function WatchlistDetail({ watchlistId }: { watchlistId: number }) {
               <div key={item.item.id} className="grid grid-cols-12 px-4 py-3 border-b border-border/50 last:border-0 items-center hover:bg-accent/20 transition-colors">
                 <div className="col-span-4 flex items-center gap-2">
                   <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="text-[9px] font-bold text-primary">{item.asset.symbol.slice(0, 2)}</span>
+                    <span className="text-3xs font-bold text-primary">{item.asset.symbol.slice(0, 2)}</span>
                   </div>
                   <div>
                     <Link href={`/assets/${item.asset.symbol}`}>
                       <div className="text-xs font-semibold text-foreground hover:text-primary cursor-pointer transition-colors">{item.asset.symbol}</div>
                     </Link>
-                    <div className="text-[10px] text-muted-foreground truncate max-w-[100px]">{item.asset.name}</div>
+                    <div className="text-2xs text-muted-foreground truncate max-w-[100px]">{item.asset.name}</div>
                   </div>
                 </div>
                 <div className="col-span-2 text-xs font-semibold tabular-nums text-foreground">{fmt(Number(price?.price ?? 0))}</div>
@@ -175,12 +205,12 @@ function WatchlistDetail({ watchlistId }: { watchlistId: number }) {
                 <div className="col-span-2 text-xs tabular-nums text-muted-foreground">
                   {price?.volume ? (Number(price.volume) / 1e5).toFixed(1) + "L" : "—"}
                 </div>
-                <div className="col-span-1 text-[10px] text-muted-foreground truncate">{item.asset.sector?.split(" ")[0] ?? "—"}</div>
+                <div className="col-span-1 text-2xs text-muted-foreground truncate">{item.asset.sector?.split(" ")[0] ?? "—"}</div>
                 <div className="col-span-1 flex justify-end gap-1">
                   <Link href={`/assets/${item.asset.symbol}`}>
-                    <button className="p-1 hover:text-primary transition-colors"><BarChart3 className="w-3 h-3 text-muted-foreground hover:text-primary" /></button>
+                    <button aria-label={`View ${item.asset.symbol} chart`} className="p-2 -m-1 rounded focus-ring hover:text-primary transition-colors"><BarChart3 className="w-3 h-3 text-muted-foreground hover:text-primary" /></button>
                   </Link>
-                  <button className="p-1" onClick={() => removeMutation.mutate({ watchlistId, assetId: item.item.assetId })}>
+                  <button aria-label={`Remove ${item.asset.symbol} from watchlist`} className="p-2 -m-1 rounded focus-ring" onClick={() => removeMutation.mutate({ watchlistId, assetId: item.item.assetId })}>
                     <X className="w-3 h-3 text-muted-foreground hover:text-bear transition-colors" />
                   </button>
                 </div>
@@ -214,15 +244,14 @@ export default function Watchlists() {
 
   if (!isAuthenticated) {
     return (
-      <div className="p-4 lg:p-6 flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <Bookmark className="w-16 h-16 text-muted-foreground/20 mb-4" />
-        <h2 className="text-lg font-bold text-foreground mb-2">Sign in to manage watchlists</h2>
-        <p className="text-sm text-muted-foreground mb-6 max-w-sm">
-          Create custom watchlists, track your favorite assets, and get personalized market insights.
-        </p>
-        <a href={getLoginUrl()}>
-          <Button className="gap-2">Sign In to PulseFlow</Button>
-        </a>
+      <div className="p-4 lg:p-6 min-h-[60vh] flex items-center justify-center">
+        <StateView
+          size="lg"
+          icon={<Bookmark className="w-16 h-16 text-muted-foreground/20" />}
+          title="Sign in to manage watchlists"
+          description="Create custom watchlists, track your favorite assets, and get personalized market insights."
+          action={<a href={getLoginUrl()}><Button className="gap-2">Sign In to PulseFlow</Button></a>}
+        />
       </div>
     );
   }
@@ -276,9 +305,12 @@ export default function Watchlists() {
           {isLoading ? (
             [...Array(3)].map((_, i) => <Skeleton key={i} className="h-20 rounded-lg" />)
           ) : !watchlists || watchlists.length === 0 ? (
-            <div className="pf-card p-6 text-center">
-              <List className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-              <div className="text-xs text-muted-foreground">No watchlists yet</div>
+            <div className="pf-card">
+              <StateView
+                size="sm"
+                icon={<List className="w-8 h-8 text-muted-foreground/30" />}
+                title="No watchlists yet"
+              />
             </div>
           ) : (
             watchlists.map((wl: any) => (
@@ -298,10 +330,11 @@ export default function Watchlists() {
           {selectedId ? (
             <WatchlistDetail watchlistId={selectedId} />
           ) : (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <List className="w-12 h-12 text-muted-foreground/20 mb-3" />
-              <div className="text-sm text-muted-foreground">Select a watchlist to view assets</div>
-            </div>
+            <StateView
+              size="lg"
+              icon={<List className="w-12 h-12 text-muted-foreground/20" />}
+              title="Select a watchlist to view assets"
+            />
           )}
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode, ElementType } from "react";
 
 /**
  * A simpler animated counter using requestAnimationFrame for smooth counting
@@ -105,4 +106,45 @@ export function AnimatedNumber({
   }, [value]);
 
   return <span className={className}>{prefix}{displayValue.toFixed(decimals)}{suffix}</span>;
+}
+
+/**
+ * useFlashChange — returns a CSS class that briefly flashes when `value`
+ * changes, tinted green if it rose and red if it fell. The class clears
+ * itself after the 300ms animation so it re-triggers on the next change.
+ * Honors prefers-reduced-motion (the CSS animation is neutralized globally).
+ */
+export function useFlashChange(value: number | undefined | null): string {
+  const prevRef = useRef<number | undefined | null>(value);
+  const [flash, setFlash] = useState<"" | "animate-flash-up" | "animate-flash-down">("");
+
+  useEffect(() => {
+    const prev = prevRef.current;
+    prevRef.current = value;
+    if (prev == null || value == null || prev === value) return;
+    setFlash(value > prev ? "animate-flash-up" : "animate-flash-down");
+    const t = setTimeout(() => setFlash(""), 320);
+    return () => clearTimeout(t);
+  }, [value]);
+
+  return flash;
+}
+
+/**
+ * FlashOnChange — wraps content and flashes its background when `value`
+ * changes. Use for live table rows / numbers that update on refetch.
+ */
+export function FlashOnChange({
+  value,
+  children,
+  className = "",
+  as: Tag = "div",
+}: {
+  value: number | undefined | null;
+  children: ReactNode;
+  className?: string;
+  as?: ElementType;
+}) {
+  const flash = useFlashChange(value);
+  return <Tag className={`${className} ${flash} rounded-sm`.trim()}>{children}</Tag>;
 }

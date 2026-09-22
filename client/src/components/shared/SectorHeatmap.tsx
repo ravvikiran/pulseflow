@@ -63,12 +63,12 @@ export function SectorHeatmap({ data, onSelect, selected, className }: SectorHea
             onSelect && "cursor-pointer"
           )}
         >
-          <div className="text-[10px] font-semibold leading-tight text-center">{getSectorShortName(item.sector)}</div>
-          <div className="text-[11px] font-bold tabular-nums text-center mt-1">
+          <div className="text-2xs font-semibold leading-tight text-center">{getSectorShortName(item.sector)}</div>
+          <div className="text-xs font-bold tabular-nums text-center mt-1">
             {item.change >= 0 ? "+" : ""}{item.change.toFixed(2)}%
           </div>
           {item.inflowOutflow !== undefined && (
-            <div className="text-[9px] text-center mt-0.5 opacity-70">
+            <div className="text-3xs text-center mt-0.5 opacity-70">
               {item.inflowOutflow >= 0 ? "↑" : "↓"} {Math.abs(item.inflowOutflow / 1000).toFixed(1)}B
             </div>
           )}

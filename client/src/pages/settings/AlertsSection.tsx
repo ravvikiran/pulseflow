@@ -119,7 +119,7 @@ export function AlertsSection({ prefs, onUpdate, isSaving }: AlertsSectionProps)
                   disabled={isSaving}
                   className="w-full max-w-xs"
                 />
-                <p className="text-xs text-muted-foreground/60">
+                <p className="text-xs text-muted-foreground">
                   Start a chat with <span className="text-blue-400 font-mono">@PulseFlowBot</span> and enter your handle above to receive alerts.
                 </p>
               </div>

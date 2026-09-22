@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AssetTable } from "@/components/shared/AssetTable";
 import { SectorHeatmap } from "@/components/shared/SectorHeatmap";
 import { StatCard } from "@/components/shared/StatCard";
+import { useFlashChange } from "@/components/AnimatedNumber";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Cell, LineChart, Line, CartesianGrid,
@@ -24,6 +25,27 @@ function fmtINR(n: number) {
   if (n >= 1e7) return `₹${(n / 1e7).toFixed(2)}Cr`;
   if (n >= 1e5) return `₹${(n / 1e5).toFixed(2)}L`;
   return `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+}
+
+// ─── Key Index Strip Card ─────────────────────────────────────────────────────
+// Flashes green/red when its price updates on the 60s refetch.
+function IndexStripCard({ idx }: { idx: { symbol: string; name: string; price: number; changePercent: number } }) {
+  const up = idx.changePercent >= 0;
+  const flash = useFlashChange(idx.price);
+  return (
+    <div className="pf-card px-3 py-2 flex items-center justify-between gap-2">
+      <div className="min-w-0">
+        <div className="text-2xs text-muted-foreground uppercase tracking-wider truncate">{idx.symbol}</div>
+        <div className={cn("text-sm font-bold font-mono tabular-nums text-foreground rounded-sm", flash)}>
+          ₹{idx.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+        </div>
+      </div>
+      <div className={cn("text-xs font-semibold tabular-nums flex items-center gap-0.5 shrink-0", up ? "text-bull" : "text-bear")}>
+        {up ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+        {up ? "+" : ""}{fmt(idx.changePercent)}%
+      </div>
+    </div>
+  );
 }
 
 // ─── FII/DII Widget ───────────────────────────────────────────────────────────
@@ -41,25 +63,25 @@ function FiiDiiWidget({ data }: { data: { fiiNet: number; diiNet: number; fiiHis
       <div className="flex items-center gap-2">
         <Users className="w-4 h-4 text-primary" />
         <span className="text-sm font-semibold text-foreground">FII / DII Activity</span>
-        <Badge variant="outline" className="text-[9px] ml-auto">NSE Only</Badge>
+        <Badge variant="outline" className="text-3xs ml-auto">NSE Only</Badge>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-surface-2 rounded p-3">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">FII Net</div>
+          <div className="text-2xs text-muted-foreground uppercase tracking-wider mb-1">FII Net</div>
           <div className={cn("text-base font-bold tabular-nums font-mono", fiiPositive ? "text-bull" : "text-bear")}>
             {fiiPositive ? "+" : ""}{fmtINR(data.fiiNet)}
           </div>
-          <div className={cn("text-[10px] flex items-center gap-0.5 mt-0.5", fiiPositive ? "text-bull" : "text-bear")}>
+          <div className={cn("text-2xs flex items-center gap-0.5 mt-0.5", fiiPositive ? "text-bull" : "text-bear")}>
             {fiiPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
             Foreign Institutional
           </div>
         </div>
         <div className="bg-surface-2 rounded p-3">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">DII Net</div>
+          <div className="text-2xs text-muted-foreground uppercase tracking-wider mb-1">DII Net</div>
           <div className={cn("text-base font-bold tabular-nums font-mono", diiPositive ? "text-bull" : "text-bear")}>
             {diiPositive ? "+" : ""}{fmtINR(data.diiNet)}
           </div>
-          <div className={cn("text-[10px] flex items-center gap-0.5 mt-0.5", diiPositive ? "text-bull" : "text-bear")}>
+          <div className={cn("text-2xs flex items-center gap-0.5 mt-0.5", diiPositive ? "text-bull" : "text-bear")}>
             {diiPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
             Domestic Institutional
           </div>
@@ -68,15 +90,15 @@ function FiiDiiWidget({ data }: { data: { fiiNet: number; diiNet: number; fiiHis
       <div className="h-32">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} barGap={1}>
-            <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0.010 250)" />
-            <XAxis dataKey="day" tick={{ fontSize: 9, fill: "oklch(0.55 0.010 240)" }} />
-            <YAxis tick={{ fontSize: 9, fill: "oklch(0.55 0.010 240)" }} tickFormatter={(v) => `${(v / 1e9).toFixed(1)}B`} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+            <XAxis dataKey="day" tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} />
+            <YAxis tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} tickFormatter={(v) => `${(v / 1e9).toFixed(1)}B`} />
             <Tooltip
-              contentStyle={{ background: "oklch(0.16 0.012 250)", border: "1px solid oklch(0.25 0.012 250)", borderRadius: 6, fontSize: 11 }}
+              contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: 6, fontSize: 11 }}
               formatter={(v: number) => [fmtINR(v), ""]}
             />
-            <Bar dataKey="FII" fill="oklch(0.60 0.20 250)" radius={[2, 2, 0, 0]} />
-            <Bar dataKey="DII" fill="oklch(0.68 0.18 155)" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="FII" fill="var(--color-primary)" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="DII" fill="var(--color-bull)" radius={[2, 2, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -95,19 +117,19 @@ function MarketBreadthWidget({ breadth }: { breadth: { advancing: number; declin
       <div className="flex items-center gap-2">
         <Activity className="w-4 h-4 text-primary" />
         <span className="text-sm font-semibold text-foreground">Market Breadth</span>
-        <Badge variant="outline" className="text-[9px] ml-auto">NSE Only</Badge>
+        <Badge variant="outline" className="text-3xs ml-auto">NSE Only</Badge>
       </div>
 
       {/* A/D bar */}
       <div>
-        <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+        <div className="flex justify-between text-2xs text-muted-foreground mb-1">
           <span className="text-bull">▲ {breadth.advancing} Advancing</span>
           <span className="text-bear">▼ {breadth.declining} Declining</span>
         </div>
         <div className="h-2 bg-bear/30 rounded-full overflow-hidden">
           <div className="h-full bg-bull rounded-full transition-all" style={{ width: `${advPct}%` }} />
         </div>
-        <div className="flex justify-between text-[9px] text-muted-foreground mt-0.5">
+        <div className="flex justify-between text-3xs text-muted-foreground mt-0.5">
           <span>{advPct.toFixed(1)}%</span>
           <span>{breadth.unchanged} Unchanged</span>
           <span>{decPct.toFixed(1)}%</span>
@@ -124,7 +146,7 @@ function MarketBreadthWidget({ breadth }: { breadth: { advancing: number; declin
           { label: "Put/Call Ratio", value: breadth.putCallRatio.toFixed(2), positive: breadth.putCallRatio < 1 },
         ].map(({ label, value, positive }) => (
           <div key={label} className="bg-surface-2 rounded p-2">
-            <div className="text-[9px] text-muted-foreground uppercase tracking-wider">{label}</div>
+            <div className="text-3xs text-muted-foreground uppercase tracking-wider">{label}</div>
             <div className={cn("text-sm font-bold tabular-nums font-mono mt-0.5", positive ? "text-bull" : "text-bear")}>{value}</div>
           </div>
         ))}
@@ -140,7 +162,7 @@ function IndiaIndicesWidget({ indices }: { indices: Array<{ symbol: string; name
       <div className="px-4 py-3 border-b border-border flex items-center gap-2">
         <BarChart3 className="w-4 h-4 text-primary" />
         <span className="text-sm font-semibold text-foreground">Indian Indices</span>
-        <Badge variant="outline" className="text-[9px] ml-auto">NSE Only</Badge>
+        <Badge variant="outline" className="text-3xs ml-auto">NSE Only</Badge>
       </div>
       <div className="divide-y divide-border/50">
         {indices.map((idx) => {
@@ -149,13 +171,13 @@ function IndiaIndicesWidget({ indices }: { indices: Array<{ symbol: string; name
             <div key={idx.symbol} className="px-4 py-2.5 flex items-center justify-between hover:bg-accent/20 transition-colors">
               <div>
                 <div className="text-xs font-semibold text-foreground">{idx.symbol}</div>
-                <div className="text-[10px] text-muted-foreground">{idx.name}</div>
+                <div className="text-2xs text-muted-foreground">{idx.name}</div>
               </div>
               <div className="text-right">
                 <div className="text-sm font-bold font-mono tabular-nums text-foreground">
                   ₹{idx.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                 </div>
-                <div className={cn("text-[10px] font-medium tabular-nums flex items-center justify-end gap-0.5",
+                <div className={cn("text-2xs font-medium tabular-nums flex items-center justify-end gap-0.5",
                   isPositive ? "text-bull" : "text-bear"
                 )}>
                   {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -173,7 +195,7 @@ function IndiaIndicesWidget({ indices }: { indices: Array<{ symbol: string; name
 // ─── India Dashboard ──────────────────────────────────────────────────────────
 export default function IndiaDashboard() {
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
-  const { data, isLoading, refetch, isFetching } = trpc.india.dashboard.useQuery(undefined, {
+  const { data, isLoading, isError, refetch, isFetching } = trpc.india.dashboard.useQuery(undefined, {
     refetchInterval: 60000,
   });
 
@@ -191,16 +213,43 @@ export default function IndiaDashboard() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-foreground">Indian Stock Market</h1>
-            <p className="text-[11px] text-muted-foreground">NSE · BSE · Nifty 50 · Sector Intelligence</p>
+            <p className="text-xs text-muted-foreground">NSE · BSE · Nifty 50 · Sector Intelligence</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className="badge-bull text-[9px]">NSE Only</Badge>
+          <Badge className="badge-bull text-3xs">NSE Only</Badge>
           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={cn("w-3 h-3", isFetching && "animate-spin")} />
           </Button>
         </div>
       </div>
+
+      {/* Error banner — explicit failure instead of empty widgets */}
+      {isError && !data && (
+        <div className="pf-card p-4 flex items-center gap-3 border-l-2 border-l-danger bg-danger-subtle" role="alert">
+          <Activity className="w-4 h-4 text-danger shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-medium text-foreground">Couldn't load NSE dashboard</div>
+            <div className="text-2xs text-muted-foreground">Check your connection and retry.</div>
+          </div>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 shrink-0" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={cn("w-3 h-3", isFetching && "animate-spin")} /> Retry
+          </Button>
+        </div>
+      )}
+
+      {/* Key Index Strip — surfaces the most-wanted numbers above the fold */}
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}
+        </div>
+      ) : (data?.indices?.length ?? 0) > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {(data?.indices ?? []).slice(0, 4).map((idx) => (
+            <IndexStripCard key={idx.symbol} idx={idx} />
+          ))}
+        </div>
+      )}
 
       {/* Indian Market Sentiment Score */}
       <div className="pf-card p-4">
@@ -213,9 +262,9 @@ export default function IndiaDashboard() {
         <div className="flex items-center gap-4">
           <div className="relative w-20 h-20 shrink-0">
             <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
-              <circle cx="40" cy="40" r="32" fill="none" stroke="oklch(0.22 0.012 250)" strokeWidth="8" />
+              <circle cx="40" cy="40" r="32" fill="none" stroke="var(--color-border)" strokeWidth="8" />
               <circle cx="40" cy="40" r="32" fill="none"
-                stroke={sentimentState === "bullish" ? "oklch(0.68 0.18 155)" : sentimentState === "bearish" ? "oklch(0.58 0.22 25)" : "oklch(0.65 0.12 80)"}
+                stroke={sentimentState === "bullish" ? "var(--color-bull)" : sentimentState === "bearish" ? "var(--color-bear)" : "var(--color-warning)"}
                 strokeWidth="8" strokeLinecap="round"
                 strokeDasharray={`${(50 + sentimentScore / 2) * 2.01} 201`}
               />
@@ -232,7 +281,7 @@ export default function IndiaDashboard() {
               { label: "52W Lows", value: String(Math.round((100 - (sentiment?.breadthScore ?? 50)) * 0.3)) },
             ].map(({ label, value }) => (
               <div key={label} className="bg-surface-2 rounded p-2">
-                <div className="text-[9px] text-muted-foreground uppercase tracking-wider">{label}</div>
+                <div className="text-3xs text-muted-foreground uppercase tracking-wider">{label}</div>
                 <div className="text-sm font-bold tabular-nums font-mono text-foreground mt-0.5">{value}</div>
               </div>
             ))}
@@ -274,9 +323,9 @@ export default function IndiaDashboard() {
             <span className="text-sm font-semibold text-foreground">NSE Sector Heatmap</span>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[9px]">NSE Only</Badge>
+            <Badge variant="outline" className="text-3xs">NSE Only</Badge>
             <Link href="/india/sectors">
-              <Button variant="ghost" size="sm" className="h-6 text-[10px] text-primary gap-1">
+              <Button variant="ghost" size="sm" className="h-6 text-2xs text-primary gap-1">
                 Full Analysis <ArrowUpRight className="w-3 h-3" />
               </Button>
             </Link>
@@ -324,7 +373,7 @@ export default function IndiaDashboard() {
               <TrendingUp className="w-4 h-4 text-bull" /> NSE Top Gainers
             </h2>
             <Link href="/india/scanner">
-              <Button variant="ghost" size="sm" className="h-6 text-[10px] text-primary gap-1">
+              <Button variant="ghost" size="sm" className="h-6 text-2xs text-primary gap-1">
                 Scanner <Zap className="w-3 h-3" />
               </Button>
             </Link>
@@ -333,6 +382,7 @@ export default function IndiaDashboard() {
             <AssetTable
               assets={(data?.topGainers ?? []).map(a => ({ ...a, currency: "INR" }))}
               showRank
+              showSparkline
               compact
               linkPrefix="/india/assets"
             />
@@ -346,6 +396,7 @@ export default function IndiaDashboard() {
             <AssetTable
               assets={(data?.topLosers ?? []).map(a => ({ ...a, currency: "INR" }))}
               showRank
+              showSparkline
               compact
               linkPrefix="/india/assets"
             />
@@ -361,7 +412,7 @@ export default function IndiaDashboard() {
             <span className="text-sm font-semibold text-foreground">Sector Rotation Snapshot</span>
           </div>
           <Link href="/india/sectors">
-            <Button variant="ghost" size="sm" className="h-6 text-[10px] text-primary gap-1">
+            <Button variant="ghost" size="sm" className="h-6 text-2xs text-primary gap-1">
               Full Engine <ArrowUpRight className="w-3 h-3" />
             </Button>
           </Link>
@@ -372,16 +423,16 @@ export default function IndiaDashboard() {
           <div className="space-y-1.5">
             {(data?.sectorPerformance ?? []).slice(0, 6).map((s, idx) => (
               <div key={s.sector} className="flex items-center gap-3 py-1.5 px-2 rounded hover:bg-accent/20 transition-colors">
-                <span className="text-[10px] text-muted-foreground w-4 tabular-nums">{idx + 1}</span>
+                <span className="text-2xs text-muted-foreground w-4 tabular-nums">{idx + 1}</span>
                 <span className="text-xs font-medium text-foreground flex-1">{s.sector}</span>
                 <div className="flex items-center gap-2">
                   <div className="w-20 h-1.5 bg-surface-3 rounded-full overflow-hidden">
                     <div
-                      className={cn("h-full rounded-full", s.performanceScore >= 60 ? "bg-bull" : s.performanceScore >= 40 ? "bg-[oklch(0.65_0.12_80)]" : "bg-bear")}
+                      className={cn("h-full rounded-full", s.performanceScore >= 60 ? "bg-bull" : s.performanceScore >= 40 ? "bg-[var(--color-warning)]" : "bg-bear")}
                       style={{ width: `${Math.min(100, s.performanceScore)}%` }}
                     />
                   </div>
-                  <span className={cn("text-[10px] font-semibold tabular-nums w-8 text-right",
+                  <span className={cn("text-2xs font-semibold tabular-nums w-8 text-right",
                     s.priceChange1d >= 0 ? "text-bull" : "text-bear"
                   )}>
                     {s.priceChange1d >= 0 ? "+" : ""}{s.priceChange1d.toFixed(2)}%

@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sparkline, generateSparklineData } from "@/components/Sparkline";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip as RechartsTooltip, Cell,
@@ -27,9 +28,9 @@ function fmtPct(n: number | null | undefined) {
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value, sub, icon: Icon, trend }: {
+function StatCard({ label, value, sub, icon: Icon, trend, sparkline }: {
   label: string; value: string; sub?: string; icon?: React.ElementType;
-  trend?: "up" | "down" | "neutral";
+  trend?: "up" | "down" | "neutral"; sparkline?: number[];
 }) {
   return (
     <div className="pf-card p-4 space-y-1">
@@ -37,7 +38,12 @@ function StatCard({ label, value, sub, icon: Icon, trend }: {
         <span className="stat-label">{label}</span>
         {Icon && <Icon className="w-4 h-4 text-muted-foreground" />}
       </div>
-      <div className="stat-value">{value}</div>
+      <div className="flex items-end justify-between gap-2">
+        <div className="stat-value">{value}</div>
+        {sparkline && sparkline.length > 1 && (
+          <Sparkline data={sparkline} width={56} height={22} color={trend === "up" ? "bull" : trend === "down" ? "bear" : "primary"} strokeWidth={1.5} />
+        )}
+      </div>
       {sub && (
         <div className={cn("stat-change", trend === "up" ? "text-bull" : trend === "down" ? "text-bear" : "text-muted-foreground")}>
           {trend === "up" && <ArrowUpRight className="inline w-3 h-3 mr-0.5" />}
@@ -57,18 +63,18 @@ function MoverRow({ symbol, name, price, changePercent, isGainer }: {
     <Link href={`/assets/${symbol}`}>
       <div className="flex items-center justify-between px-3 py-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className={cn("w-7 h-7 rounded flex items-center justify-center shrink-0 text-[10px] font-bold",
+          <div className={cn("w-7 h-7 rounded flex items-center justify-center shrink-0 text-2xs font-bold",
             isGainer ? "bg-bull/15 text-bull" : "bg-bear/15 text-bear")}>
             {symbol.slice(0, 2)}
           </div>
           <div className="min-w-0">
             <div className="text-xs font-semibold text-foreground">{symbol}</div>
-            <div className="text-[10px] text-muted-foreground truncate max-w-[100px]">{name}</div>
+            <div className="text-2xs text-muted-foreground truncate max-w-[100px]">{name}</div>
           </div>
         </div>
         <div className="text-right shrink-0">
           <div className="text-xs font-semibold tabular-nums text-foreground">${fmt(price)}</div>
-          <div className={cn("text-[10px] font-medium tabular-nums", isGainer ? "text-bull" : "text-bear")}>
+          <div className={cn("text-2xs font-medium tabular-nums", isGainer ? "text-bull" : "text-bear")}>
             {fmtPct(changePercent)}
           </div>
         </div>
@@ -97,7 +103,7 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function USDashboard() {
   const [tab, setTab] = useState<"gainers" | "losers">("gainers");
 
-  const { data, isLoading, refetch } = trpc.us.dashboard.useQuery(undefined, {
+  const { data, isLoading, isError, refetch, isFetching } = trpc.us.dashboard.useQuery(undefined, {
     refetchInterval: 60000,
   });
   const { data: sectorHeatmap, isLoading: sectorLoading } = trpc.us.sectorHeatmap.useQuery(undefined, {
@@ -125,8 +131,8 @@ export default function USDashboard() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Flag className="w-3.5 h-3.5 text-primary" />
-            <span className="text-[10px] uppercase tracking-widest text-primary font-semibold">US Market</span>
-            <Badge variant="outline" className="text-[9px] px-2 py-0.5 border-amber-500/40 text-amber-400">
+            <span className="text-2xs uppercase tracking-widest text-primary font-semibold">US Market</span>
+            <Badge variant="outline" className="text-3xs px-2 py-0.5 border-amber-500/40 text-amber-400">
               Future Ready
             </Badge>
           </div>
@@ -139,6 +145,20 @@ export default function USDashboard() {
           <RefreshCw className="w-3.5 h-3.5" /> Refresh
         </Button>
       </div>
+
+      {/* Error banner — explicit failure instead of empty widgets */}
+      {isError && !data && (
+        <div className="pf-card p-4 flex items-center gap-3 border-l-2 border-l-danger bg-danger-subtle" role="alert">
+          <Activity className="w-4 h-4 text-danger shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-medium text-foreground">Couldn't load US dashboard</div>
+            <div className="text-2xs text-muted-foreground">Check your connection and retry.</div>
+          </div>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 shrink-0" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={cn("w-3 h-3", isFetching && "animate-spin")} /> Retry
+          </Button>
+        </div>
+      )}
 
       {/* Future-Ready Notice */}
       <div className="pf-card p-4 border-amber-500/20 bg-amber-500/5">
@@ -171,6 +191,7 @@ export default function USDashboard() {
                 sub={fmtPct(idx.changePercent)}
                 icon={BarChart3}
                 trend={Number(idx.changePercent) >= 0 ? "up" : "down"}
+                sparkline={generateSparklineData(16, Number(idx.changePercent) >= 0 ? "up" : "down")}
               />
             ))}
           </div>
@@ -178,7 +199,11 @@ export default function USDashboard() {
       </div>
 
       {/* Market Sentiment */}
-      {!isLoading && data && (
+      {isLoading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)}
+        </div>
+      ) : data && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard label="Advance/Decline" value={`${data.marketSentiment.advanceCount}/${data.marketSentiment.declineCount}`}
             sub={`Ratio: ${fmt(data.marketSentiment.advanceCount / Math.max(1, data.marketSentiment.declineCount), 2)}`}
@@ -202,7 +227,7 @@ export default function USDashboard() {
       <div className="pf-card p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">US Sector Heatmap</h3>
-          <Badge variant="outline" className="text-[10px]">US equities only</Badge>
+          <Badge variant="outline" className="text-2xs">US equities only</Badge>
         </div>
         {sectorLoading ? (
           <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
@@ -220,13 +245,13 @@ export default function USDashboard() {
                 return (
                   <div key={s.sector} className="heatmap-cell p-2 min-h-[72px]"
                     style={{ background: bg, border: `1px solid ${change >= 0 ? "oklch(0.68 0.18 155 / 0.2)" : "oklch(0.58 0.22 25 / 0.2)"}` }}>
-                    <div className="text-[10px] font-semibold text-foreground/80 uppercase leading-tight">
+                    <div className="text-2xs font-semibold text-foreground/80 uppercase leading-tight">
                       {s.sector.replace("US ", "")}
                     </div>
                     <div className={cn("text-sm font-bold tabular-nums mt-1", change >= 0 ? "text-bull" : "text-bear")}>
                       {fmtPct(change)}
                     </div>
-                    <div className="text-[9px] text-muted-foreground mt-0.5">Score: {Math.round(s.score)}</div>
+                    <div className="text-3xs text-muted-foreground mt-0.5">Score: {Math.round(s.score)}</div>
                   </div>
                 );
               })}
@@ -234,9 +259,9 @@ export default function USDashboard() {
             {/* Sector Bar Chart */}
             <ResponsiveContainer width="100%" height={140}>
               <BarChart data={sectorChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.25 0.01 250)" />
-                <XAxis dataKey="sector" tick={{ fontSize: 9, fill: "oklch(0.55 0.02 250)" }} tickLine={false} />
-                <YAxis tick={{ fontSize: 9, fill: "oklch(0.55 0.02 250)" }} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="sector" tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} tickLine={false} />
+                <YAxis tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} tickLine={false} />
                 <RechartsTooltip content={<CustomTooltip />} />
                 <Bar dataKey="change" name="1D Change" radius={[3, 3, 0, 0]}>
                   {sectorChartData.map((entry, i) => (
@@ -256,7 +281,8 @@ export default function USDashboard() {
           <div className="flex gap-1">
             {(["gainers", "losers"] as const).map(t => (
               <button key={t} onClick={() => setTab(t)}
-                className={cn("px-2.5 py-1 rounded text-[10px] font-medium transition-colors capitalize",
+                aria-pressed={tab === t}
+                className={cn("px-2.5 py-1 rounded text-2xs font-medium transition-colors capitalize focus-ring min-h-[32px]",
                   tab === t ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
                 {t === "gainers" ? "Top Gainers" : "Top Losers"}
               </button>

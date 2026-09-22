@@ -62,9 +62,9 @@ export function Sparkline({
   if (!data || data.length < 2) return null;
 
   const colorMap: Record<string, { stroke: string; fill: string }> = {
-    bull: { stroke: "oklch(0.68 0.18 155)", fill: "oklch(0.68 0.18 155 / 0.1)" },
-    bear: { stroke: "oklch(0.58 0.22 25)", fill: "oklch(0.58 0.22 25 / 0.1)" },
-    primary: { stroke: "oklch(0.60 0.20 250)", fill: "oklch(0.60 0.20 250 / 0.1)" },
+    bull: { stroke: "var(--color-bull)", fill: "oklch(0.68 0.18 155 / 0.1)" },
+    bear: { stroke: "var(--color-bear)", fill: "oklch(0.58 0.22 25 / 0.1)" },
+    primary: { stroke: "var(--color-primary)", fill: "oklch(0.60 0.20 250 / 0.1)" },
   };
 
   const colors = colorMap[resolvedColor] || colorMap.primary;

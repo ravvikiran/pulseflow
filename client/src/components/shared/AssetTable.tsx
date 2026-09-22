@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
+import { Sparkline, generateSparklineData } from "@/components/Sparkline";
 
 export interface AssetRow {
   symbol: string;
@@ -23,6 +24,8 @@ interface AssetTableProps {
   showSector?: boolean;
   showScore?: boolean;
   showVolume?: boolean;
+  /** Show an inline trend sparkline column (hidden on small screens). */
+  showSparkline?: boolean;
   linkPrefix?: string;
   emptyMessage?: string;
   compact?: boolean;
@@ -44,7 +47,7 @@ function formatVolume(vol: number): string {
 
 export function AssetTable({
   assets, title, showRank = false, showSector = false, showScore = false,
-  showVolume = false, linkPrefix = "/assets", emptyMessage = "No assets found",
+  showVolume = false, showSparkline = false, linkPrefix = "/assets", emptyMessage = "No assets found",
   compact = false, className
 }: AssetTableProps) {
   if (assets.length === 0) {
@@ -66,13 +69,14 @@ export function AssetTable({
         <table className="w-full pf-table">
           <thead>
             <tr className="border-b border-border">
-              {showRank && <th className="text-left px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider w-8">#</th>}
-              <th className="text-left px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Symbol</th>
-              {showSector && <th className="text-left px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Sector</th>}
-              <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Price</th>
-              <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Change</th>
-              {showVolume && <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Volume</th>}
-              {showScore && <th className="text-right px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Score</th>}
+              {showRank && <th className="text-left px-3 py-2 text-2xs font-semibold text-muted-foreground uppercase tracking-wider w-8">#</th>}
+              <th className="text-left px-3 py-2 text-2xs font-semibold text-muted-foreground uppercase tracking-wider">Symbol</th>
+              {showSector && <th className="text-left px-3 py-2 text-2xs font-semibold text-muted-foreground uppercase tracking-wider hidden md:table-cell">Sector</th>}
+              <th className="text-right px-3 py-2 text-2xs font-semibold text-muted-foreground uppercase tracking-wider">Price</th>
+              <th className="text-right px-3 py-2 text-2xs font-semibold text-muted-foreground uppercase tracking-wider">Change</th>
+              {showSparkline && <th className="text-right px-3 py-2 text-2xs font-semibold text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Trend</th>}
+              {showVolume && <th className="text-right px-3 py-2 text-2xs font-semibold text-muted-foreground uppercase tracking-wider hidden lg:table-cell">Volume</th>}
+              {showScore && <th className="text-right px-3 py-2 text-2xs font-semibold text-muted-foreground uppercase tracking-wider">Score</th>}
             </tr>
           </thead>
           <tbody>
@@ -87,7 +91,7 @@ export function AssetTable({
                     <Link href={`${linkPrefix}/${asset.symbol}`}>
                       <div className="flex items-center gap-2 group cursor-pointer">
                         <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
-                          <span className="text-[9px] font-bold text-primary">{asset.symbol.slice(0, 2)}</span>
+                          <span className="text-3xs font-bold text-primary">{asset.symbol.slice(0, 2)}</span>
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-1">
@@ -95,7 +99,7 @@ export function AssetTable({
                             <ExternalLink className="w-2.5 h-2.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                           {asset.name && !compact && (
-                            <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">{asset.name}</div>
+                            <div className="text-2xs text-muted-foreground truncate max-w-[120px]">{asset.name}</div>
                           )}
                         </div>
                       </div>
@@ -103,7 +107,7 @@ export function AssetTable({
                   </td>
                   {showSector && (
                     <td className="px-3 py-2 hidden md:table-cell">
-                      <span className="text-[10px] text-muted-foreground truncate max-w-[100px] block">{asset.sector ?? "—"}</span>
+                      <span className="text-2xs text-muted-foreground truncate max-w-[100px] block">{asset.sector ?? "—"}</span>
                     </td>
                   )}
                   <td className="px-3 py-2 text-right">
@@ -119,15 +123,29 @@ export function AssetTable({
                       <span>{isPositive ? "+" : ""}{(asset.changePercent ?? 0).toFixed(2)}%</span>
                     </div>
                   </td>
+                  {showSparkline && (
+                    <td className="px-3 py-2 hidden sm:table-cell">
+                      <div className="flex justify-end">
+                        <Sparkline
+                          data={generateSparklineData(16, isPositive ? "up" : "down")}
+                          width={60}
+                          height={20}
+                          color={isPositive ? "bull" : "bear"}
+                          strokeWidth={1.25}
+                          showArea={false}
+                        />
+                      </div>
+                    </td>
+                  )}
                   {showVolume && (
                     <td className="px-3 py-2 text-right hidden lg:table-cell">
-                      <span className="text-[10px] text-muted-foreground tabular-nums">{asset.volume != null ? formatVolume(asset.volume) : "—"}</span>
+                      <span className="text-2xs text-muted-foreground tabular-nums">{asset.volume != null ? formatVolume(asset.volume) : "—"}</span>
                     </td>
                   )}
                   {showScore && (
                     <td className="px-3 py-2 text-right">
                       {asset.score != null ? (
-                        <span className={cn("score-badge text-[10px]",
+                        <span className={cn("score-badge text-2xs",
                           asset.score >= 70 ? "bg-bull/15 text-bull" : asset.score >= 40 ? "bg-neutral/15 text-neutral" : "bg-bear/15 text-bear"
                         )}>{asset.score}</span>
                       ) : "—"}

@@ -59,7 +59,7 @@ export default function NotFound() {
         </div>
 
         {/* Keyboard shortcut hint */}
-        <p className="text-[10px] text-muted-foreground mt-6">
+        <p className="text-2xs text-muted-foreground mt-6">
           Tip: Press <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-foreground font-mono">Ctrl+K</kbd> to quickly navigate anywhere
         </p>
       </motion.div>

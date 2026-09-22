@@ -62,7 +62,7 @@ export default function Commodities() {
                       <Icon className={cn("w-5 h-5", color)} />
                       <div>
                         <div className="text-sm font-bold text-foreground">{item.name}</div>
-                        <div className="text-[10px] text-muted-foreground">{item.sector} · per {item.unit}</div>
+                        <div className="text-2xs text-muted-foreground">{item.sector} · per {item.unit}</div>
                       </div>
                     </div>
                   </div>
@@ -72,7 +72,7 @@ export default function Commodities() {
                       {isPositive ? "+" : ""}{fmt(item.changePercent)}%
                     </div>
                   </div>
-                  <div className="flex justify-between text-[9px] text-muted-foreground">
+                  <div className="flex justify-between text-3xs text-muted-foreground">
                     <span>H: ${fmt(item.high)}</span>
                     <span>L: ${fmt(item.low)}</span>
                     <span>O: ${fmt(item.open)}</span>

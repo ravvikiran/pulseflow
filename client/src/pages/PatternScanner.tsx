@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StateView, QueryErrorState } from "@/components/shared/StateView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Link } from "wouter";
@@ -129,32 +130,32 @@ function PatternCard({ pattern }: { pattern: PatternResult }) {
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-bold text-foreground font-mono">{pattern.symbol}</span>
-                <Badge className={cn("text-[9px] px-1.5 py-0 h-4 border", marketBadge.color)}>{marketBadge.label}</Badge>
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">{pattern.timeframe.toUpperCase()}</Badge>
+                <Badge className={cn("text-3xs px-1.5 py-0 h-4 border", marketBadge.color)}>{marketBadge.label}</Badge>
+                <Badge variant="outline" className="text-3xs px-1.5 py-0 h-4">{pattern.timeframe.toUpperCase()}</Badge>
               </div>
               <div className="text-xs font-semibold text-foreground mt-0.5">{pattern.patternName}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{pattern.description}</div>
+              <div className="text-2xs text-muted-foreground mt-0.5 line-clamp-1">{pattern.description}</div>
             </div>
           </div>
 
           {/* Right: confidence + badges */}
           <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold", confidenceConfig.bg, confidenceConfig.color)}>
+            <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold", confidenceConfig.bg, confidenceConfig.color)}>
               <span>{pattern.confidenceScore.toFixed(0)}%</span>
               <span className="opacity-70">{confidenceConfig.label}</span>
             </div>
             <div className="flex items-center gap-1">
               {pattern.volumeConfirmed && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-bull/10 text-bull border border-bull/20 font-medium">Vol ✓</span>
+                <span className="text-3xs px-1.5 py-0.5 rounded bg-bull/10 text-bull border border-bull/20 font-medium">Vol ✓</span>
               )}
               {pattern.breakoutConfirmed && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-medium">BO ✓</span>
+                <span className="text-3xs px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 font-medium">BO ✓</span>
               )}
               {pattern.isFalseBreakout && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-bear/10 text-bear border border-bear/20 font-medium">False BO</span>
+                <span className="text-3xs px-1.5 py-0.5 rounded bg-bear/10 text-bear border border-bear/20 font-medium">False BO</span>
               )}
             </div>
-            <div className="text-[9px] text-muted-foreground">{timeAgo(pattern.detectedAt)}</div>
+            <div className="text-3xs text-muted-foreground">{timeAgo(pattern.detectedAt)}</div>
           </div>
         </div>
 
@@ -166,7 +167,7 @@ function PatternCard({ pattern }: { pattern: PatternResult }) {
               style={{ width: `${pattern.confidenceScore}%` }}
             />
           </div>
-          <span className="text-[9px] text-muted-foreground shrink-0">Strength: {pattern.patternStrength.toFixed(0)}</span>
+          <span className="text-3xs text-muted-foreground shrink-0">Strength: {pattern.patternStrength.toFixed(0)}</span>
           <button className="text-muted-foreground hover:text-foreground transition-colors">
             {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
@@ -180,27 +181,27 @@ function PatternCard({ pattern }: { pattern: PatternResult }) {
             <div className="bg-surface-2 rounded-lg p-2.5 text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Target className="w-3 h-3 text-bull" />
-                <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Target</span>
+                <span className="text-3xs text-muted-foreground uppercase tracking-wider">Target</span>
               </div>
               <div className="text-xs font-bold text-bull font-mono">{fmtPrice(pattern.targetLevel)}</div>
             </div>
             <div className="bg-surface-2 rounded-lg p-2.5 text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Zap className="w-3 h-3 text-primary" />
-                <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Breakout</span>
+                <span className="text-3xs text-muted-foreground uppercase tracking-wider">Breakout</span>
               </div>
               <div className="text-xs font-bold text-primary font-mono">{fmtPrice(pattern.breakoutLevel)}</div>
             </div>
             <div className="bg-surface-2 rounded-lg p-2.5 text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Shield className="w-3 h-3 text-bear" />
-                <span className="text-[9px] text-muted-foreground uppercase tracking-wider">Stop Loss</span>
+                <span className="text-3xs text-muted-foreground uppercase tracking-wider">Stop Loss</span>
               </div>
               <div className="text-xs font-bold text-bear font-mono">{fmtPrice(pattern.stopLossZone)}</div>
             </div>
           </div>
 
-          <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">{pattern.description}</p>
+          <p className="text-xs text-muted-foreground mt-3 leading-relaxed">{pattern.description}</p>
 
           <div className="mt-3 flex items-center gap-2">
             <Link href={`/assets/${pattern.symbol}`}>
@@ -236,7 +237,7 @@ function PatternStats({ patterns }: { patterns: PatternResult[] }) {
       {stats.map(s => (
         <div key={s.label} className="pf-card p-3 text-center">
           <div className={cn("text-xl font-bold tabular-nums", s.color)}>{s.value}</div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">{s.label}</div>
+          <div className="text-2xs text-muted-foreground mt-0.5">{s.label}</div>
         </div>
       ))}
     </div>
@@ -261,7 +262,7 @@ export default function PatternScanner() {
     filterFalseBreakouts,
   }), [market, timeframe, minConfidence, requireVolumeConfirmation, filterFalseBreakouts]);
 
-  const { data: rawPatterns, isLoading, refetch, isFetching } = trpc.global.patterns.useQuery(
+  const { data: rawPatterns, isLoading, isError, refetch, isFetching } = trpc.global.patterns.useQuery(
     queryInput,
     { refetchInterval: 180000 }
   );
@@ -285,7 +286,7 @@ export default function PatternScanner() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-foreground">Pattern Scanner</h1>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               14 chart pattern types — Head &amp; Shoulders, Flags, Triangles, Wedges, Cup &amp; Handle and more
             </p>
           </div>
@@ -314,7 +315,7 @@ export default function PatternScanner() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Market</Label>
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Market</Label>
             <Select value={market} onValueChange={(v) => setMarket(v as any)}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
@@ -328,7 +329,7 @@ export default function PatternScanner() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Timeframe</Label>
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Timeframe</Label>
             <Select value={timeframe} onValueChange={setTimeframe}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
@@ -342,7 +343,7 @@ export default function PatternScanner() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Direction</Label>
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Direction</Label>
             <Select value={severityFilter} onValueChange={setSeverityFilter}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
@@ -356,7 +357,7 @@ export default function PatternScanner() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Min Confidence</Label>
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Min Confidence</Label>
             <Select value={String(minConfidence)} onValueChange={v => setMinConfidence(Number(v))}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
@@ -370,7 +371,7 @@ export default function PatternScanner() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Options</Label>
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Options</Label>
             <div className="flex flex-col gap-1.5">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -379,7 +380,7 @@ export default function PatternScanner() {
                   onChange={e => setRequireVolumeConfirmation(e.target.checked)}
                   className="w-3 h-3 accent-primary"
                 />
-                <span className="text-[10px] text-muted-foreground">Volume Confirmed Only</span>
+                <span className="text-2xs text-muted-foreground">Volume Confirmed Only</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -388,7 +389,7 @@ export default function PatternScanner() {
                   onChange={e => setFilterFalseBreakouts(e.target.checked)}
                   className="w-3 h-3 accent-primary"
                 />
-                <span className="text-[10px] text-muted-foreground">Filter False Breakouts</span>
+                <span className="text-2xs text-muted-foreground">Filter False Breakouts</span>
               </label>
             </div>
           </div>
@@ -402,12 +403,12 @@ export default function PatternScanner() {
             <ScanSearch className="w-4 h-4 text-primary" />
             Pattern Results
             {patterns.length > 0 && (
-              <Badge variant="outline" className="text-[9px] ml-1">{patterns.length} patterns</Badge>
+              <Badge variant="outline" className="text-3xs ml-1">{patterns.length} patterns</Badge>
             )}
           </h2>
           <div className="flex items-center gap-2">
             {/* Severity legend */}
-            <div className="flex items-center gap-3 text-[9px] text-muted-foreground">
+            <div className="flex items-center gap-3 text-3xs text-muted-foreground">
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-bull inline-block" />Bullish</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-bear inline-block" />Bearish</span>
               <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-primary inline-block" />Neutral</span>
@@ -419,6 +420,15 @@ export default function PatternScanner() {
           <div className="space-y-3">
             {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
           </div>
+        ) : isError ? (
+          <div className="pf-card">
+            <QueryErrorState
+              onRetry={() => refetch()}
+              isRetrying={isFetching}
+              title="Pattern scan failed"
+              description="Couldn't run the pattern detector. Check your connection and retry."
+            />
+          </div>
         ) : patterns.length > 0 ? (
           <div className="space-y-3">
             {patterns.map((p, i) => (
@@ -426,15 +436,18 @@ export default function PatternScanner() {
             ))}
           </div>
         ) : (
-          <div className="pf-card p-12 text-center">
-            <ScanSearch className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-            <div className="text-sm font-medium text-muted-foreground">No patterns detected</div>
-            <div className="text-[11px] text-muted-foreground/60 mt-1">
-              Try lowering the minimum confidence threshold or selecting a different market.
-            </div>
-            <Button size="sm" variant="outline" className="mt-4 h-8 text-xs gap-1.5" onClick={() => refetch()}>
-              <RefreshCw className="w-3 h-3" /> Run Pattern Scan
-            </Button>
+          <div className="pf-card">
+            <StateView
+              size="lg"
+              icon={<ScanSearch className="w-10 h-10 text-muted-foreground/30" />}
+              title="No patterns detected"
+              description="Try lowering the minimum confidence threshold or selecting a different market."
+              action={
+                <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={() => refetch()}>
+                  <RefreshCw className="w-3 h-3" /> Run Pattern Scan
+                </Button>
+              }
+            />
           </div>
         )}
       </div>

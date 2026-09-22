@@ -46,7 +46,7 @@ class ErrorBoundary extends Component<Props, State> {
                 Show error details
               </summary>
               <div className="mt-2 p-3 rounded-lg bg-surface-2 border border-border overflow-auto max-h-40">
-                <pre className="text-[11px] text-muted-foreground whitespace-pre-wrap font-mono">
+                <pre className="text-xs text-muted-foreground whitespace-pre-wrap font-mono">
                   {this.state.error?.message || "Unknown error"}
                 </pre>
               </div>

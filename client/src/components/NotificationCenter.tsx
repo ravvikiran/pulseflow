@@ -68,7 +68,7 @@ function getDomainBadge(domain: MarketDomain) {
     india: "NSE", crypto: "CRYPTO", us: "US", global: "GLOBAL",
   };
   return (
-    <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border", styles[domain])}>
+    <span className={cn("text-2xs font-bold px-1.5 py-0.5 rounded border", styles[domain])}>
       {labels[domain]}
     </span>
   );
@@ -131,11 +131,11 @@ function NotificationCard({
           <div className="flex items-center gap-2 flex-wrap">
             {getDomainBadge(notification.marketDomain)}
             {notification.symbol && (
-              <span className="text-[10px] font-mono text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded">
+              <span className="text-2xs font-mono text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded">
                 {notification.symbol}
               </span>
             )}
-            <span className="text-[10px] text-slate-500">
+            <span className="text-2xs text-slate-500">
               {timeAgo(notification.createdAt)}
             </span>
           </div>
@@ -305,7 +305,7 @@ export function NotificationBell() {
         {unreadCount > 0 && (
           <span className={cn(
             "absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full",
-            "bg-red-500 text-white text-[10px] font-bold flex items-center justify-center px-1",
+            "bg-red-500 text-white text-2xs font-bold flex items-center justify-center px-1",
             "ring-2 ring-slate-900"
           )}>
             {unreadCount > 99 ? "99+" : unreadCount}

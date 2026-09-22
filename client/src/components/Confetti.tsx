@@ -142,7 +142,7 @@ export function AchievementToast({
         </motion.div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
+            <span className="text-2xs font-bold uppercase tracking-wider opacity-70">
               Achievement Unlocked
             </span>
           </div>

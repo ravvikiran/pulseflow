@@ -120,22 +120,22 @@ function AssetDetail({ symbol }: { symbol: string }) {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-foreground">{asset.symbol}</h1>
-              <Badge className={cn("text-[10px]", isPositive ? "badge-bull" : "badge-bear")}>
+              <Badge className={cn("text-2xs", isPositive ? "badge-bull" : "badge-bear")}>
                 {isPositive ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
                 {fmtPct(change)}
               </Badge>
-              <Badge className={cn("text-[10px]", emaAlignment === "bullish" ? "badge-bull" : emaAlignment === "bearish" ? "badge-bear" : "badge-neutral")}>
+              <Badge className={cn("text-2xs", emaAlignment === "bullish" ? "badge-bull" : emaAlignment === "bearish" ? "badge-bear" : "badge-neutral")}>
                 EMA {emaAlignment.toUpperCase()}
               </Badge>
             </div>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <span className="text-sm text-muted-foreground">{asset.name} · {asset.exchange} · {asset.sector}</span>
               {asset.exchange === "CRYPTO" ? (
-                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20 uppercase tracking-wide">Crypto Market</span>
+                <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20 uppercase tracking-wide">Crypto Market</span>
               ) : asset.exchange === "NSE" || asset.exchange === "BSE" ? (
-                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">Indian Stock Market</span>
+                <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">Indian Stock Market</span>
               ) : asset.exchange === "INDEX" ? (
-                <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 uppercase tracking-wide">Index</span>
+                <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/20 uppercase tracking-wide">Index</span>
               ) : null}
             </div>
           </div>
@@ -168,7 +168,7 @@ function AssetDetail({ symbol }: { symbol: string }) {
       <div className="pf-card p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-foreground">Price Chart — 1 Year (Daily)</h3>
-          <div className="flex items-center gap-3 text-[10px]">
+          <div className="flex items-center gap-3 text-2xs">
             <span className="flex items-center gap-1"><div className="w-3 h-0.5 bg-amber-400" /> EMA 20</span>
             <span className="flex items-center gap-1"><div className="w-3 h-0.5 bg-blue-500" /> EMA 50</span>
             <span className="flex items-center gap-1"><div className="w-3 h-0.5 bg-violet-500" /> EMA 200</span>
@@ -205,7 +205,7 @@ function AssetDetail({ symbol }: { symbol: string }) {
                   </div>
                   <div className="text-right">
                     <div className="text-xs font-semibold tabular-nums text-foreground">{fmt(ema)}</div>
-                    <div className={cn("text-[10px] tabular-nums", diff >= 0 ? "text-bull" : "text-bear")}>
+                    <div className={cn("text-2xs tabular-nums", diff >= 0 ? "text-bull" : "text-bear")}>
                       {diff >= 0 ? "+" : ""}{fmt(diff, 2)}% from price
                     </div>
                   </div>
@@ -236,7 +236,7 @@ function AssetDetail({ symbol }: { symbol: string }) {
                   style={{ left: `${Math.min(99, Math.max(0, Number(ind?.rsi ?? 50)))}%` }}
                 />
               </div>
-              <div className="flex justify-between text-[9px] text-muted-foreground mt-0.5">
+              <div className="flex justify-between text-3xs text-muted-foreground mt-0.5">
                 <span>0 (Oversold)</span><span>50</span><span>100 (Overbought)</span>
               </div>
             </div>
@@ -244,7 +244,7 @@ function AssetDetail({ symbol }: { symbol: string }) {
             {/* Volume Ratio */}
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Volume Ratio (20d avg)</span>
-              <Badge className={cn("text-[10px]", Number(ind?.volumeRatio ?? 1) > 2 ? "badge-bull" : "badge-neutral")}>
+              <Badge className={cn("text-2xs", Number(ind?.volumeRatio ?? 1) > 2 ? "badge-bull" : "badge-neutral")}>
                 {fmt(ind?.volumeRatio, 2)}x
               </Badge>
             </div>
@@ -253,7 +253,7 @@ function AssetDetail({ symbol }: { symbol: string }) {
             <div>
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-muted-foreground">52-Week Range</span>
-                <span className="text-foreground text-[10px] tabular-nums">{fmt(ind?.low52w)} – {fmt(ind?.high52w)}</span>
+                <span className="text-foreground text-2xs tabular-nums">{fmt(ind?.low52w)} – {fmt(ind?.high52w)}</span>
               </div>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
@@ -270,7 +270,7 @@ function AssetDetail({ symbol }: { symbol: string }) {
               <span className="text-xs text-muted-foreground">All-Time High (ATH)</span>
               <div className="text-right">
                 <div className="text-xs font-semibold tabular-nums text-foreground">{fmt(ind?.ath)}</div>
-                <div className="text-[10px] text-muted-foreground">
+                <div className="text-2xs text-muted-foreground">
                   {fmt(((Number(asset.price) - Number(ind?.ath ?? 0)) / Number(ind?.ath ?? 1)) * 100, 1)}% from ATH
                 </div>
               </div>
@@ -299,7 +299,7 @@ function AssetDetail({ symbol }: { symbol: string }) {
                 }}
               />
               {compareSymbols.map(s => (
-                <Badge key={s} className="text-[10px] gap-1 cursor-pointer" onClick={() => setCompareSymbols(prev => prev.filter(x => x !== s))}>
+                <Badge key={s} className="text-2xs gap-1 cursor-pointer" onClick={() => setCompareSymbols(prev => prev.filter(x => x !== s))}>
                   {s} ×
                 </Badge>
               ))}
@@ -313,7 +313,7 @@ function AssetDetail({ symbol }: { symbol: string }) {
                   <XAxis dataKey="date" tick={{ fontSize: 8 }} tickLine={false} axisLine={false} interval={4} />
                   <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
                   <RechartsTooltip
-                    contentStyle={{ background: "oklch(0.16 0.012 250)", border: "1px solid oklch(0.25 0.012 250)", borderRadius: "6px", fontSize: "10px" }}
+                    contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: "10px" }}
                     formatter={(val: any) => [`${fmt(val)}%`]}
                   />
                   <Legend wrapperStyle={{ fontSize: "9px" }} />
@@ -422,16 +422,16 @@ function AssetList() {
                 <div className="pf-card-hover p-3 cursor-pointer">
                   <div className="flex items-center justify-between mb-2">
                     <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center">
-                      <span className="text-[10px] font-bold text-primary">{asset.symbol.slice(0, 2)}</span>
+                      <span className="text-2xs font-bold text-primary">{asset.symbol.slice(0, 2)}</span>
                     </div>
-                    <Badge className={cn("text-[9px]", change >= 0 ? "badge-bull" : "badge-bear")}>
+                    <Badge className={cn("text-3xs", change >= 0 ? "badge-bull" : "badge-bear")}>
                       {fmtPct(change)}
                     </Badge>
                   </div>
                   <div className="text-xs font-bold text-foreground">{asset.symbol}</div>
-                  <div className="text-[10px] text-muted-foreground truncate">{asset.name}</div>
+                  <div className="text-2xs text-muted-foreground truncate">{asset.name}</div>
                   <div className="text-sm font-bold tabular-nums text-foreground mt-1">{fmt(Number(asset.price))}</div>
-                  <div className="text-[9px] text-muted-foreground mt-0.5">Vol: {fmtVol(Number(asset.volume))}</div>
+                  <div className="text-3xs text-muted-foreground mt-0.5">Vol: {fmtVol(Number(asset.volume))}</div>
                 </div>
               </Link>
             );
@@ -439,7 +439,7 @@ function AssetList() {
         </div>
       ) : (
         <div className="pf-card overflow-hidden">
-          <div className="grid grid-cols-12 px-4 py-2 border-b border-border bg-muted/30 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+          <div className="grid grid-cols-12 px-4 py-2 border-b border-border bg-muted/30 text-2xs uppercase tracking-wider text-muted-foreground font-semibold">
             <div className="col-span-3">Asset</div>
             <div className="col-span-2">Price</div>
             <div className="col-span-2">Change</div>
@@ -454,11 +454,11 @@ function AssetList() {
                 <div className="grid grid-cols-12 px-4 py-3 border-b border-border/50 last:border-0 hover:bg-accent/30 cursor-pointer transition-colors items-center">
                   <div className="col-span-3 flex items-center gap-2.5">
                     <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-[9px] font-bold text-primary">{asset.symbol.slice(0, 2)}</span>
+                      <span className="text-3xs font-bold text-primary">{asset.symbol.slice(0, 2)}</span>
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-foreground">{asset.symbol}</div>
-                      <div className="text-[10px] text-muted-foreground truncate max-w-[100px]">{asset.name}</div>
+                      <div className="text-2xs text-muted-foreground truncate max-w-[100px]">{asset.name}</div>
                     </div>
                   </div>
                   <div className="col-span-2 text-xs font-semibold tabular-nums text-foreground">{fmt(Number(asset.price))}</div>
@@ -466,11 +466,11 @@ function AssetList() {
                     {fmtPct(change)}
                   </div>
                   <div className="col-span-2 text-xs tabular-nums text-muted-foreground">{fmtVol(Number(asset.volume))}</div>
-                  <div className="col-span-2 text-[10px] tabular-nums text-muted-foreground">
+                  <div className="col-span-2 text-2xs tabular-nums text-muted-foreground">
                     {fmt(Number(asset.high))} / {fmt(Number(asset.low))}
                   </div>
                   <div className="col-span-1">
-                    <Badge className="text-[9px] bg-muted text-muted-foreground border-0">{asset.assetType ?? asset.exchange}</Badge>
+                    <Badge className="text-3xs bg-muted text-muted-foreground border-0">{asset.assetType ?? asset.exchange}</Badge>
                   </div>
                 </div>
               </Link>

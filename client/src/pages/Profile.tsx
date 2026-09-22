@@ -59,8 +59,8 @@ export default function Profile() {
           <div className="text-base font-bold text-foreground">{user?.name ?? "User"}</div>
           <div className="text-sm text-muted-foreground">{user?.email ?? "—"}</div>
           <div className="flex items-center gap-2 mt-1">
-            <Badge className="text-[10px] bg-primary/15 text-primary border-primary/20">{user?.role ?? "user"}</Badge>
-            <span className="text-[10px] text-muted-foreground">Member since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</span>
+            <Badge className="text-2xs bg-primary/15 text-primary border-primary/20">{user?.role ?? "user"}</Badge>
+            <span className="text-2xs text-muted-foreground">Member since {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</span>
           </div>
         </div>
         <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 shrink-0" onClick={() => logout()}>
@@ -84,7 +84,7 @@ export default function Profile() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs font-medium text-foreground">Default Timeframe</div>
-                  <div className="text-[10px] text-muted-foreground">Used in charts and scanner</div>
+                  <div className="text-2xs text-muted-foreground">Used in charts and scanner</div>
                 </div>
                 <div className="flex gap-1.5">
                   {["1h", "4h", "1d", "1w"].map(tf => (
@@ -99,7 +99,7 @@ export default function Profile() {
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-xs font-medium text-foreground">Theme</div>
-                  <div className="text-[10px] text-muted-foreground">Interface appearance</div>
+                  <div className="text-2xs text-muted-foreground">Interface appearance</div>
                 </div>
                 <div className="flex gap-1.5">
                   {["dark", "light"].map(t => (
@@ -132,7 +132,7 @@ export default function Profile() {
                 <div key={label} className="flex items-center justify-between">
                   <div>
                     <div className="text-xs font-medium text-foreground">{label}</div>
-                    <div className="text-[10px] text-muted-foreground">{desc}</div>
+                    <div className="text-2xs text-muted-foreground">{desc}</div>
                   </div>
                   <Switch checked={value} onCheckedChange={set} />
                 </div>

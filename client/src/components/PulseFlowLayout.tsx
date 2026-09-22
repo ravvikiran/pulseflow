@@ -11,7 +11,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/components/NotificationCenter";
-import { MarketTicker } from "@/components/MarketTicker";
 import { MarketPulsePanel } from "@/components/MarketPulse";
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
@@ -93,9 +92,15 @@ function NavItem({
   const isActive = href === "/" ? location === "/" : location === href || location.startsWith(href + "/");
 
   return (
-    <Link href={href} onClick={onClick}>
+    <Link
+      href={href}
+      onClick={onClick}
+      aria-current={isActive ? "page" : undefined}
+      aria-label={collapsed ? label : undefined}
+      className="block rounded-md focus-ring"
+    >
       <div className={cn(
-        "flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-all duration-150 group relative",
+        "flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-all duration-150 group relative min-h-[40px]",
         isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-accent",
         collapsed && "justify-center px-2"
       )}>
@@ -107,7 +112,7 @@ function NavItem({
           <>
             <span className={cn("text-xs font-medium truncate flex-1", isActive && accent ? accent : "")}>{label}</span>
             {alertBadge && alertCount && alertCount > 0 ? (
-              <Badge className="bg-primary/20 text-primary border-primary/30 text-[10px] px-1.5 py-0 h-4">
+              <Badge className="bg-primary/20 text-primary border-primary/30 text-2xs px-1.5 py-0 h-4">
                 {alertCount > 99 ? "99+" : alertCount}
               </Badge>
             ) : null}
@@ -159,11 +164,11 @@ function NavGroup({
       >
         <div className="flex items-center gap-2">
           {GroupIcon && <GroupIcon className={cn("w-3.5 h-3.5 shrink-0", accent ?? "text-muted-foreground")} />}
-          <span className={cn("text-[10px] font-semibold uppercase tracking-widest", accent ?? "text-muted-foreground")}>
+          <span className={cn("text-2xs font-semibold uppercase tracking-widest", accent ?? "text-muted-foreground")}>
             {group}
           </span>
           {groupBadge && (
-            <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20 uppercase tracking-wide">
+            <span className="text-3xs font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20 uppercase tracking-wide">
               {groupBadge}
             </span>
           )}
@@ -213,7 +218,7 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
             {!isCollapsed && (
               <div>
                 <div className="text-sm font-bold text-foreground tracking-tight">PulseFlow</div>
-                <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Market Intelligence</div>
+                <div className="text-2xs text-muted-foreground uppercase tracking-widest">Market Intelligence</div>
               </div>
             )}
           </div>
@@ -223,7 +228,7 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
         {!isCollapsed && (
           <div className="flex items-center gap-2 px-4 py-2 border-b border-border">
             <div className="w-1.5 h-1.5 rounded-full bg-bull pulse-live" />
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Markets Live</span>
+            <span className="text-2xs text-muted-foreground uppercase tracking-wider">Markets Live</span>
           </div>
         )}
 
@@ -250,7 +255,7 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
           <NavItem href="/settings" icon={Settings2} label="Settings" collapsed={isCollapsed} />
           {/* Keyboard shortcut hint */}
           {!isCollapsed && (
-            <div className="flex items-center gap-2 px-3 py-1.5 text-[10px] text-muted-foreground">
+            <div className="flex items-center gap-2 px-3 py-1.5 text-2xs text-muted-foreground">
               <Command className="w-3 h-3" />
               <span>Ctrl+K to search</span>
             </div>
@@ -331,13 +336,13 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
             >
               <Search className="w-3.5 h-3.5" />
               <span>Search...</span>
-              <kbd className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-background border border-border font-mono">⌘K</kbd>
+              <kbd className="ml-2 text-2xs px-1.5 py-0.5 rounded bg-background border border-border font-mono">⌘K</kbd>
             </button>
 
             {/* Live market indicator */}
             <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-bull/10 border border-bull/20">
               <div className="w-1.5 h-1.5 rounded-full bg-bull pulse-live" />
-              <span className="text-[10px] font-medium text-bull uppercase tracking-wider">Live</span>
+              <span className="text-2xs font-medium text-bull uppercase tracking-wider">Live</span>
             </div>
 
             {/* Market Pulse toggle */}
@@ -359,9 +364,6 @@ export default function PulseFlowLayout({ children }: { children: React.ReactNod
             <NotificationBell />
           </div>
         </header>
-
-        {/* Market Ticker */}
-        <MarketTicker />
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">

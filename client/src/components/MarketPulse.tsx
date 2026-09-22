@@ -52,15 +52,15 @@ const typeIcons: Record<string, React.ElementType> = {
 };
 
 const severityColors: Record<string, string> = {
-  info: "border-l-primary text-primary",
-  warning: "border-l-[oklch(0.65_0.12_80)] text-[oklch(0.65_0.12_80)]",
-  success: "border-l-bull text-bull",
+  info: "border-l-info text-info",
+  warning: "border-l-warning text-warning",
+  success: "border-l-success text-success",
 };
 
 const severityBg: Record<string, string> = {
   info: "bg-primary/5",
-  warning: "bg-[oklch(0.65_0.12_80/0.05)]",
-  success: "bg-bull/5",
+  warning: "bg-warning-subtle",
+  success: "bg-success-subtle",
 };
 
 /**
@@ -104,10 +104,11 @@ export function MarketPulsePanel({ isOpen, onToggle }: { isOpen: boolean; onTogg
       <button
         onClick={onToggle}
         className={cn(
-          "fixed right-0 top-1/2 -translate-y-1/2 z-40 w-6 h-16 rounded-l-md border border-r-0 border-border bg-card flex items-center justify-center hover:bg-accent transition-colors",
+          "fixed right-0 top-1/2 -translate-y-1/2 z-40 w-6 h-16 rounded-l-md border border-r-0 border-border bg-card flex items-center justify-center hover:bg-accent transition-colors focus-ring",
           isOpen && "hidden"
         )}
         title="Open Market Pulse"
+        aria-label="Open Market Pulse panel"
       >
         <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
       </button>
@@ -129,10 +130,11 @@ export function MarketPulsePanel({ isOpen, onToggle }: { isOpen: boolean; onTogg
                 <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Market Pulse</h3>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[9px] text-muted-foreground tabular-nums">{events.length} events</span>
+                <span className="text-3xs text-muted-foreground tabular-nums">{events.length} events</span>
                 <button
                   onClick={onToggle}
-                  className="p-1 rounded hover:bg-accent text-muted-foreground transition-colors"
+                  aria-label="Close Market Pulse panel"
+                  className="p-2 -m-0.5 rounded hover:bg-accent text-muted-foreground transition-colors focus-ring"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
@@ -158,8 +160,8 @@ export function MarketPulsePanel({ isOpen, onToggle }: { isOpen: boolean; onTogg
                     <div className="flex items-start gap-2">
                       <Icon className="w-3 h-3 shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-medium text-foreground leading-tight">{event.message}</p>
-                        <p className="text-[9px] text-muted-foreground mt-0.5">
+                        <p className="text-2xs font-medium text-foreground leading-tight">{event.message}</p>
+                        <p className="text-3xs text-muted-foreground mt-0.5">
                           {event.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                         </p>
                       </div>
@@ -171,7 +173,7 @@ export function MarketPulsePanel({ isOpen, onToggle }: { isOpen: boolean; onTogg
 
             {/* Footer */}
             <div className="border-t border-border px-3 py-2 shrink-0">
-              <p className="text-[9px] text-muted-foreground text-center">
+              <p className="text-3xs text-muted-foreground text-center">
                 Live market signals · Auto-updating
               </p>
             </div>

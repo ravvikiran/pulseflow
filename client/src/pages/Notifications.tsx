@@ -294,7 +294,7 @@ export default function Notifications() {
           {/* Unread section */}
           {filtered.filter(n => !n.isRead).length > 0 && (
             <>
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 px-1 pt-2 pb-1">
+              <div className="text-2xs font-semibold uppercase tracking-widest text-slate-500 px-1 pt-2 pb-1">
                 Unread ({filtered.filter(n => !n.isRead).length})
               </div>
               {filtered.filter(n => !n.isRead).map(n => (
@@ -311,7 +311,7 @@ export default function Notifications() {
           {/* Read section */}
           {!showUnreadOnly && filtered.filter(n => n.isRead).length > 0 && (
             <>
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500 px-1 pt-4 pb-1">
+              <div className="text-2xs font-semibold uppercase tracking-widest text-slate-500 px-1 pt-4 pb-1">
                 Read ({filtered.filter(n => n.isRead).length})
               </div>
               {filtered.filter(n => n.isRead).map(n => (

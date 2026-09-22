@@ -108,7 +108,7 @@ export function CommandPalette() {
           <div className="flex flex-col items-center gap-2 py-4">
             <Search className="w-8 h-8 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">No results found</p>
-            <p className="text-xs text-muted-foreground/70">Try searching for a stock symbol, page name, or feature</p>
+            <p className="text-xs text-muted-foreground">Try searching for a stock symbol, page name, or feature</p>
           </div>
         </CommandEmpty>
 
@@ -132,7 +132,7 @@ export function CommandPalette() {
                 <span className="text-sm font-medium">{asset.symbol}</span>
                 <span className="text-xs text-muted-foreground">{asset.name}</span>
               </div>
-              <span className="ml-auto text-[10px] text-muted-foreground uppercase">{asset.market}</span>
+              <span className="ml-auto text-2xs text-muted-foreground uppercase">{asset.market}</span>
             </CommandItem>
           ))}
         </CommandGroup>
@@ -163,19 +163,19 @@ export function CommandPalette() {
         <CommandGroup heading="Keyboard Shortcuts">
           <CommandItem disabled className="text-xs text-muted-foreground">
             <span className="flex items-center gap-2">
-              <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-[10px] font-mono border border-border">g h</kbd>
+              <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-2xs font-mono border border-border">g h</kbd>
               Go Home
             </span>
           </CommandItem>
           <CommandItem disabled className="text-xs text-muted-foreground">
             <span className="flex items-center gap-2">
-              <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-[10px] font-mono border border-border">g i</kbd>
+              <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-2xs font-mono border border-border">g i</kbd>
               India Market
             </span>
           </CommandItem>
           <CommandItem disabled className="text-xs text-muted-foreground">
             <span className="flex items-center gap-2">
-              <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-[10px] font-mono border border-border">g c</kbd>
+              <kbd className="px-1.5 py-0.5 bg-surface-2 rounded text-2xs font-mono border border-border">g c</kbd>
               Crypto Market
             </span>
           </CommandItem>

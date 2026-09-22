@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StateView, QueryErrorState } from "@/components/shared/StateView";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -45,12 +46,12 @@ function ScoreRing({ score }: { score: number }) {
   return (
     <div className="relative w-10 h-10">
       <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-        <circle cx="18" cy="18" r="15.9" fill="none" stroke="oklch(0.22 0.012 250)" strokeWidth="3" />
+        <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--color-border)" strokeWidth="3" />
         <circle cx="18" cy="18" r="15.9" fill="none" stroke={color} strokeWidth="3"
           strokeDasharray={`${(score / 100) * 100} 100`} strokeLinecap="round" />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-[9px] font-bold tabular-nums" style={{ color }}>{Math.round(score)}</span>
+        <span className="text-3xs font-bold tabular-nums" style={{ color }}>{Math.round(score)}</span>
       </div>
     </div>
   );
@@ -60,7 +61,7 @@ function ResultRow({ result, index }: { result: any; index: number }) {
   const [expanded, setExpanded] = useState(false);
   const change = Number(result.changePct ?? result.changePercent ?? 0);
   const confidence = result.confidence ?? "low";
-  const confidenceColor = confidence === "high" ? "text-bull" : confidence === "medium" ? "text-[oklch(0.65_0.12_80)]" : "text-muted-foreground";
+  const confidenceColor = confidence === "high" ? "text-bull" : confidence === "medium" ? "text-warning" : "text-muted-foreground";
 
   return (
     <div className="border-b border-border/50 last:border-0">
@@ -69,25 +70,25 @@ function ResultRow({ result, index }: { result: any; index: number }) {
         <div className="col-span-1 text-xs text-muted-foreground tabular-nums font-medium">{index + 1}</div>
         <div className="col-span-3 flex items-center gap-2">
           <div className="w-7 h-7 rounded bg-primary/10 flex items-center justify-center shrink-0">
-            <span className="text-[9px] font-bold text-primary">{result.symbol?.slice(0, 3)}</span>
+            <span className="text-3xs font-bold text-primary">{result.symbol?.slice(0, 3)}</span>
           </div>
           <div>
             <div className="text-xs font-semibold text-foreground">{result.symbol}</div>
-            <div className="text-[9px] text-muted-foreground truncate max-w-[80px]">{result.name}</div>
+            <div className="text-3xs text-muted-foreground truncate max-w-[80px]">{result.name}</div>
           </div>
         </div>
         <div className="col-span-2">
           <div className="text-xs font-semibold tabular-nums text-foreground">${fmt(Number(result.price ?? 0))}</div>
-          <div className={cn("text-[10px] font-medium tabular-nums", change >= 0 ? "text-bull" : "text-bear")}>{fmtPct(change)}</div>
+          <div className={cn("text-2xs font-medium tabular-nums", change >= 0 ? "text-bull" : "text-bear")}>{fmtPct(change)}</div>
         </div>
         <div className="col-span-2"><ScoreRing score={Number(result.qualityScore ?? result.score ?? 0)} /></div>
         <div className="col-span-2">
           <div className="text-xs text-foreground tabular-nums">{fmt(result.details?.rsi, 1)}</div>
-          <div className="text-[10px] text-muted-foreground">RSI</div>
+          <div className="text-2xs text-muted-foreground">RSI</div>
         </div>
         <div className="col-span-2">
           <div className={cn("text-xs tabular-nums font-semibold", confidenceColor)}>{confidence.toUpperCase()}</div>
-          <div className="text-[10px] text-muted-foreground">Confidence</div>
+          <div className="text-2xs text-muted-foreground">Confidence</div>
         </div>
       </div>
       {expanded && (
@@ -104,7 +105,7 @@ function ResultRow({ result, index }: { result: any; index: number }) {
               { label: "Trend Aligned", value: result.details?.trendAligned ? "Yes ✓" : "—" },
             ].map(({ label, value }) => (
               <div key={label} className="bg-card rounded p-2">
-                <div className="text-[9px] text-muted-foreground uppercase tracking-wider">{label}</div>
+                <div className="text-3xs text-muted-foreground uppercase tracking-wider">{label}</div>
                 <div className="text-xs font-semibold text-foreground mt-0.5">{value}</div>
               </div>
             ))}
@@ -112,7 +113,7 @@ function ResultRow({ result, index }: { result: any; index: number }) {
           {result.signals && result.signals.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {result.signals.map((sig: string) => (
-                <span key={sig} className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{sig}</span>
+                <span key={sig} className="text-3xs px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">{sig}</span>
               ))}
             </div>
           )}
@@ -212,7 +213,7 @@ export default function CryptoScanner() {
     volumeMultiplier: 2.0,
   }), [scanType, timeframe, minQualityScore]);
 
-  const { data: results, isLoading, refetch } = trpc.crypto.scanner.useQuery(queryInput, {
+  const { data: results, isLoading, isError, refetch, isFetching } = trpc.crypto.scanner.useQuery(queryInput, {
     refetchInterval: false,
   });
   const { data: savedScans } = trpc.crypto.savedScans.useQuery(undefined, { enabled: isAuthenticated });
@@ -233,7 +234,7 @@ export default function CryptoScanner() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-2 h-2 rounded-full bg-bull pulse-live" />
-            <span className="text-[10px] uppercase tracking-widest text-bull font-semibold">Crypto Market</span>
+            <span className="text-2xs uppercase tracking-widest text-bull font-semibold">Crypto Market</span>
           </div>
           <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
             <Search className="w-5 h-5 text-primary" />
@@ -255,16 +256,17 @@ export default function CryptoScanner() {
             <div className="flex items-center gap-2">
               <Filter className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">Crypto Filters</h3>
-              <Badge variant="outline" className="text-[9px] ml-auto">v2 Engine</Badge>
+              <Badge variant="outline" className="text-3xs ml-auto">v2 Engine</Badge>
             </div>
 
             {/* Scan Type */}
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Scan Strategy</label>
+              <label className="text-2xs uppercase tracking-wider text-muted-foreground font-semibold">Scan Strategy</label>
               <div className="space-y-1.5">
                 {SCAN_TYPES.map(({ value, label, icon: Icon, desc }) => (
                   <button key={value} onClick={() => setScanType(value)}
-                    className={cn("w-full text-left px-3 py-2 rounded-md text-xs transition-all",
+                    aria-pressed={scanType === value}
+                    className={cn("w-full text-left px-3 py-2 rounded-md text-xs transition-all focus-ring",
                       scanType === value
                         ? "bg-primary/15 border border-primary/30 text-primary"
                         : "hover:bg-accent/50 text-muted-foreground hover:text-foreground border border-transparent")}>
@@ -272,7 +274,7 @@ export default function CryptoScanner() {
                       <Icon className="w-3.5 h-3.5 shrink-0" />
                       <span className="font-medium">{label}</span>
                     </div>
-                    {scanType === value && <div className="text-[9px] mt-1 text-primary/70">{desc}</div>}
+                    {scanType === value && <div className="text-3xs mt-1 text-primary/70">{desc}</div>}
                   </button>
                 ))}
               </div>
@@ -280,11 +282,12 @@ export default function CryptoScanner() {
 
             {/* Timeframe */}
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Timeframe</label>
+              <label className="text-2xs uppercase tracking-wider text-muted-foreground font-semibold">Timeframe</label>
               <div className="flex flex-wrap gap-1.5">
                 {TIMEFRAMES.map(tf => (
                   <button key={tf.value} onClick={() => setTimeframe(tf.value)}
-                    className={cn("px-2.5 py-1 rounded text-xs font-medium transition-colors",
+                    aria-pressed={timeframe === tf.value}
+                    className={cn("px-2.5 py-1 rounded text-xs font-medium transition-colors focus-ring min-h-[32px]",
                       timeframe === tf.value ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
                     {tf.label}
                   </button>
@@ -294,13 +297,15 @@ export default function CryptoScanner() {
 
             {/* Min Quality Score */}
             <div className="space-y-2">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+              <label className="text-2xs uppercase tracking-wider text-muted-foreground font-semibold">
                 Min Quality: {minQualityScore}
               </label>
               <div className="flex flex-wrap gap-1">
                 {[20, 30, 40, 50, 60, 70].map(v => (
                   <button key={v} onClick={() => setMinQualityScore(v)}
-                    className={cn("px-2 py-0.5 rounded text-[10px] font-medium transition-colors",
+                    aria-pressed={minQualityScore === v}
+                    aria-label={`Minimum quality score ${v}`}
+                    className={cn("px-2 py-0.5 rounded text-2xs font-medium transition-colors focus-ring",
                       minQualityScore === v ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
                     {v}+
                   </button>
@@ -354,7 +359,8 @@ export default function CryptoScanner() {
                     onClick={() => { setScanType(scan.config?.scanType ?? "ema_alignment"); setTimeframe(scan.config?.timeframe ?? "1D"); }}>
                     {scan.name}
                   </button>
-                  <button className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  <button aria-label={`Delete saved scan ${scan.name}`}
+                    className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-2 -m-1 rounded focus-ring"
                     onClick={() => deleteScanMutation.mutate({ id: scan.id })}>
                     <Trash2 className="w-3 h-3 text-bear" />
                   </button>
@@ -370,7 +376,7 @@ export default function CryptoScanner() {
             <div className="flex items-center gap-2">
               <ScanIcon className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold text-foreground">{currentScanType?.label}</span>
-              <Badge variant="outline" className="text-[9px]">Crypto Only</Badge>
+              <Badge variant="outline" className="text-3xs">Crypto Only</Badge>
             </div>
             <div className="flex items-center gap-2">
               {results && results.length > 0 && (
@@ -383,7 +389,7 @@ export default function CryptoScanner() {
           {/* Column Headers */}
           <div className="grid grid-cols-12 px-4 py-2 border-b border-border/30 bg-muted/30">
             {["#", "Asset", "Price / Change", "Quality", "RSI", "Confidence"].map((h, i) => (
-              <div key={h} className={cn("text-[9px] uppercase tracking-wider text-muted-foreground font-semibold",
+              <div key={h} className={cn("text-3xs uppercase tracking-wider text-muted-foreground font-semibold",
                 i === 0 ? "col-span-1" : i === 1 ? "col-span-3" : "col-span-2")}>{h}</div>
             ))}
           </div>
@@ -392,12 +398,20 @@ export default function CryptoScanner() {
             <div className="p-4 space-y-2">
               {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-12 rounded" />)}
             </div>
+          ) : isError ? (
+            <QueryErrorState
+              onRetry={() => refetch()}
+              isRetrying={isFetching}
+              title="Scan failed"
+              description="The crypto scanner couldn't complete. Check your connection and retry."
+            />
           ) : !results || results.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Search className="w-10 h-10 text-muted-foreground/30 mb-3" />
-              <div className="text-sm text-muted-foreground">No crypto assets match this scan</div>
-              <div className="text-xs text-muted-foreground/60 mt-1">Try lowering the minimum quality score</div>
-            </div>
+            <StateView
+              icon={<Search className="w-10 h-10 text-muted-foreground/30" />}
+              title="No crypto assets match this scan"
+              description="Try lowering the minimum quality score or switching scan strategy."
+              size="lg"
+            />
           ) : (
             <div>
               {results.map((result: any, i: number) => (

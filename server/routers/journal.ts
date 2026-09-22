@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { publicProcedure, router } from "../_core/trpc";
-import { getAllTrades, getOpenTrades, getClosedTrades, saveTrade, updateTrade, deleteTrade, checkTradesAgainstPrices } from "../tradeJournal";
+import { getAllTrades, getOpenTrades, getClosedTrades, saveTrade, updateTrade, deleteTrade, checkTradesAgainstPrices, findOpenTrade, clearClosedTrades, clearAllFeedback, getStrategyReliability } from "../tradeJournal";
 import { getCurrentPrices } from "../dataProvider";
 
 export const journalRouter = router({
@@ -66,7 +66,17 @@ export const journalRouter = router({
       notes: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
+      // Returns { success:false, duplicate:true, existingId, existingTrade }
+      // when an OPEN trade for the same symbol+market already exists.
       return saveTrade(input);
+    }),
+
+  /** Check whether an open trade already exists for a symbol+market (pre-save UX) */
+  checkDuplicate: publicProcedure
+    .input(z.object({ symbol: z.string(), market: z.enum(["india", "crypto", "us", "commodities"]) }))
+    .query(async ({ input }) => {
+      const existing = findOpenTrade(input.symbol, input.market);
+      return { duplicate: !!existing, existingId: existing?.id ?? null };
     }),
 
   /** Close a trade manually */
@@ -152,5 +162,20 @@ export const journalRouter = router({
       avgWin: winners.length > 0 ? Math.round(winners.reduce((s, t) => s + (t.pnlPercent ?? 0), 0) / winners.length * 100) / 100 : 0,
       avgLoss: losers.length > 0 ? Math.round(losers.reduce((s, t) => s + (t.pnlPercent ?? 0), 0) / losers.length * 100) / 100 : 0,
     };
+  }),
+
+  /** Per-strategy reliability scorecard (feedback + outcomes) */
+  reliability: publicProcedure.query(async () => getStrategyReliability()),
+
+  /** Reset closed-trade history (open positions are preserved) */
+  clearHistory: publicProcedure.mutation(async () => {
+    const removed = clearClosedTrades();
+    return { success: true, removed };
+  }),
+
+  /** Reset all feedback across trades */
+  clearFeedback: publicProcedure.mutation(async () => {
+    const cleared = clearAllFeedback();
+    return { success: true, cleared };
   }),
 });

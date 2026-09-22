@@ -88,7 +88,7 @@ export function SplashScreen({ isVisible }: SplashScreenProps) {
 
             {/* Status text */}
             <motion.p
-              className="text-[10px] text-muted-foreground"
+              className="text-2xs text-muted-foreground"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}

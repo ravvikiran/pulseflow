@@ -144,8 +144,8 @@ export default function Historical() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="date" tick={{ fontSize: 8 }} tickLine={false} axisLine={false} interval={Math.floor(sentimentChartData.length / 8)} />
                       <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} domain={[-100, 100]} />
-                      <RechartsTooltip contentStyle={{ background: "oklch(0.16 0.012 250)", border: "1px solid oklch(0.25 0.012 250)", borderRadius: "6px", fontSize: "10px" }} />
-                      <ReferenceLine y={0} stroke="oklch(0.35 0.012 250)" strokeDasharray="4 4" />
+                      <RechartsTooltip contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: "10px" }} />
+                      <ReferenceLine y={0} stroke="var(--color-surface-3)" strokeDasharray="4 4" />
                       <ReferenceLine y={20} stroke="var(--color-bull)" strokeDasharray="2 4" strokeOpacity={0.4} />
                       <ReferenceLine y={-20} stroke="var(--color-bear)" strokeDasharray="2 4" strokeOpacity={0.4} />
                       <Area type="monotone" dataKey="score" stroke="var(--color-primary)" strokeWidth={2} fill="url(#bullGrad)" dot={false} />
@@ -164,7 +164,7 @@ export default function Historical() {
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="date" tick={{ fontSize: 8 }} tickLine={false} axisLine={false} interval={Math.floor(sentimentChartData.length / 6)} />
                         <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} domain={[40, 55]} />
-                        <RechartsTooltip contentStyle={{ background: "oklch(0.16 0.012 250)", border: "1px solid oklch(0.25 0.012 250)", borderRadius: "6px", fontSize: "10px" }} />
+                        <RechartsTooltip contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: "10px" }} />
                         <Line type="monotone" dataKey="btcDominance" stroke="#a855f7" strokeWidth={2} dot={false} name="BTC Dom %" />
                       </LineChart>
                     </ResponsiveContainer>
@@ -185,7 +185,7 @@ export default function Historical() {
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey="date" tick={{ fontSize: 8 }} tickLine={false} axisLine={false} interval={Math.floor(sentimentChartData.length / 6)} />
                         <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} />
-                        <RechartsTooltip contentStyle={{ background: "oklch(0.16 0.012 250)", border: "1px solid oklch(0.25 0.012 250)", borderRadius: "6px", fontSize: "10px" }} />
+                        <RechartsTooltip contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: "10px" }} />
                         <Area type="monotone" dataKey="volatility" stroke="var(--color-bear)" strokeWidth={2} fill="url(#volGrad)" dot={false} name="Volatility" />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -211,7 +211,7 @@ export default function Historical() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="date" tick={{ fontSize: 8 }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} />
-                      <RechartsTooltip contentStyle={{ background: "oklch(0.16 0.012 250)", border: "1px solid oklch(0.25 0.012 250)", borderRadius: "6px", fontSize: "10px" }} />
+                      <RechartsTooltip contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: "10px" }} />
                       <Legend wrapperStyle={{ fontSize: "9px" }} />
                       {Object.keys(SECTOR_COLORS).slice(0, 6).map(sector => {
                         const shortName = sector.replace("Information Technology", "IT").replace("Banking & Finance", "Banking").replace("Healthcare & Pharma", "Pharma");
@@ -233,12 +233,12 @@ export default function Historical() {
                     <div key={sector} className="pf-card p-3">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-                        <span className="text-[10px] font-semibold text-foreground truncate">{sector.split(" ")[0]}</span>
+                        <span className="text-2xs font-semibold text-foreground truncate">{sector.split(" ")[0]}</span>
                       </div>
                       <div className="text-lg font-bold tabular-nums" style={{ color }}>
                         #{sectorData?.rank ?? "—"}
                       </div>
-                      <div className="text-[10px] text-muted-foreground">Current Rank</div>
+                      <div className="text-2xs text-muted-foreground">Current Rank</div>
                     </div>
                   );
                 })}
@@ -278,10 +278,10 @@ export default function Historical() {
                       <XAxis dataKey="date" tick={{ fontSize: 8 }} tickLine={false} axisLine={false} interval={Math.floor(performanceChartData.length / 7)} />
                       <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} tickFormatter={v => `${v}%`} />
                       <RechartsTooltip
-                        contentStyle={{ background: "oklch(0.16 0.012 250)", border: "1px solid oklch(0.25 0.012 250)", borderRadius: "6px", fontSize: "10px" }}
+                        contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: "10px" }}
                         formatter={(val: any) => [`${fmt(val)}%`]}
                       />
-                      <ReferenceLine y={0} stroke="oklch(0.35 0.012 250)" strokeDasharray="4 4" />
+                      <ReferenceLine y={0} stroke="var(--color-surface-3)" strokeDasharray="4 4" />
                       <Legend wrapperStyle={{ fontSize: "9px" }} />
                       {perfSymbols.map((sym, i) => {
                         const colors = ["var(--color-primary)", "#f59e0b", "#3b82f6", "#10b981", "#a855f7"];
@@ -306,7 +306,7 @@ export default function Historical() {
                       <div className={cn("text-lg font-bold tabular-nums", ret >= 0 ? "text-bull" : "text-bear")}>
                         {fmtPct(ret)}
                       </div>
-                      <div className="text-[10px] text-muted-foreground">{perfDays}D Return</div>
+                      <div className="text-2xs text-muted-foreground">{perfDays}D Return</div>
                     </div>
                   );
                 })}

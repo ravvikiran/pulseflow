@@ -53,6 +53,23 @@
   --color-bull:              oklch(0.68 0.18 155);   /* green */
   --color-bear:              oklch(0.58 0.22 25);    /* red */
   --color-neutral:           oklch(0.65 0.12 80);    /* amber */
+
+  /* ── Semantic intent aliases ──
+     One source of truth: intent names map onto the market palette.
+     Use these (success/danger/warning/info) in non-market UI so we
+     never hardcode oklch() literals inline. */
+  --color-success:           var(--color-bull);      /* positive / up / confirm */
+  --color-danger:            var(--color-bear);      /* negative / down / error */
+  --color-warning:           oklch(0.65 0.12 80);    /* caution (== neutral amber) */
+  --color-info:              var(--color-primary);   /* informational */
+
+  /* ── Type scale extension ──
+     The base scale is text-xs..text-2xl. Dense financial tables need
+     sub-xs sizes; give them named tokens instead of ad-hoc text-[Npx]. */
+  --text-3xs: 0.5625rem;   /* 9px  — micro labels, dense table meta */
+  --text-3xs--line-height: 0.875rem;
+  --text-2xs: 0.625rem;    /* 10px — captions, badges, table headers */
+  --text-2xs--line-height: 0.9375rem;
   --color-surface:           oklch(0.13 0.012 250);
   --color-surface-2:         oklch(0.16 0.012 250);
   --color-surface-3:         oklch(0.20 0.012 250);
@@ -146,6 +163,18 @@
   .text-neutral-market { color: var(--color-neutral); }
   .bg-bull     { background-color: var(--color-bull); }
   .bg-bear     { background-color: var(--color-bear); }
+
+  /* Semantic intent colors — prefer these over inline oklch() literals */
+  .text-success { color: var(--color-success); }
+  .text-danger  { color: var(--color-danger); }
+  .text-warning { color: var(--color-warning); }
+  .text-info    { color: var(--color-info); }
+  .border-l-warning { border-left-color: var(--color-warning); }
+  .border-l-success { border-left-color: var(--color-success); }
+  .border-l-danger  { border-left-color: var(--color-danger); }
+  .bg-warning-subtle { background-color: oklch(0.65 0.12 80 / 0.05); }
+  .bg-success-subtle { background-color: oklch(0.68 0.18 155 / 0.05); }
+  .bg-danger-subtle  { background-color: oklch(0.58 0.22 25 / 0.05); }
 
   /* Glow effects */
   .glow-primary { box-shadow: 0 0 20px var(--color-glow); }
@@ -257,30 +286,20 @@
 
 
 /* ─── Enhanced Animations ─── */
-@keyframes gradient-shift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-@keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 5px oklch(0.60 0.20 250 / 0.3); }
-  50% { box-shadow: 0 0 20px oklch(0.60 0.20 250 / 0.5), 0 0 40px oklch(0.60 0.20 250 / 0.2); }
-}
-
-@keyframes ticker-scroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
 @keyframes count-up {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* Value/row flash on live data update — brief semantic tint that fades out.
+   Confirms "this number just changed" without being distracting. 300ms. */
+@keyframes flash-up {
+  0%   { background-color: oklch(0.68 0.18 155 / 0.28); }
+  100% { background-color: transparent; }
+}
+@keyframes flash-down {
+  0%   { background-color: oklch(0.58 0.22 25 / 0.28); }
+  100% { background-color: transparent; }
 }
 
 @keyframes scale-in {
@@ -293,34 +312,21 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
-@keyframes border-glow {
-  0%, 100% { border-color: oklch(0.60 0.20 250 / 0.2); }
-  50% { border-color: oklch(0.60 0.20 250 / 0.5); }
-}
-
 /* ─── Utility Animations ─── */
 @layer utilities {
-  .animate-gradient {
-    background-size: 200% 200%;
-    animation: gradient-shift 3s ease infinite;
-  }
-  .animate-float {
-    animation: float 3s ease-in-out infinite;
-  }
-  .animate-glow-pulse {
-    animation: glow-pulse 2s ease-in-out infinite;
-  }
   .animate-scale-in {
     animation: scale-in 0.3s ease-out;
   }
   .animate-slide-up {
     animation: slide-up 0.4s ease-out;
   }
-  .animate-count-up {
-    animation: count-up 0.5s ease-out;
+
+  /* Meaningful state-change feedback: flash a value/row when live data updates. */
+  .animate-flash-up {
+    animation: flash-up 0.3s ease-out;
   }
-  .animate-border-glow {
-    animation: border-glow 2s ease-in-out infinite;
+  .animate-flash-down {
+    animation: flash-down 0.3s ease-out;
   }
 
   /* Stagger children animation */
