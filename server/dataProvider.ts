@@ -463,7 +463,6 @@ export async function runRealScanner(options: {
       }
     }
 
-    // ─── DEAD_SWITCH_START (removed below) ───
     if (matches && score >= 40) {
       // Calculate stop loss and target based on the primary scan type and ATR.
       // In combination mode, the FIRST selected strategy drives SL/target.

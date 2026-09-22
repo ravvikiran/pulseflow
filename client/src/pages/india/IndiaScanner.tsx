@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StateView, QueryErrorState } from "@/components/shared/StateView";
+import { SaveTradeButton } from "@/components/shared/SaveTradeButton";
+import { StrategyReliabilityPanel } from "@/components/shared/StrategyReliability";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -172,53 +174,31 @@ function CopyToTradingViewButton({ symbols }: { symbols: string[] }) {
   );
 }
 
-function SaveTradeButton({ result }: { result: any }) {
-  const utils = trpc.useUtils();
-  const saveMutation = trpc.journal.save.useMutation({
-    onSuccess: () => { utils.journal.all.invalidate(); toast.success(`${result.symbol} saved to journal`); },
-    onError: () => toast.error("Failed to save trade"),
-  });
-
-  return (
-    <button
-      onClick={() => saveMutation.mutate({
-        symbol: result.symbol,
-        name: result.name,
-        sector: result.sector ?? "",
-        exchange: result.exchange ?? "NSE",
-        market: (result.marketDomain ?? "india") as "india" | "crypto" | "us",
-        scanType: result.scanType ?? "ema_alignment",
-        entryPrice: result.price,
-        entryDate: new Date().toISOString(),
-        stopLoss: result.stopLoss ?? result.price * 0.95,
-        target: result.target ?? result.price * 1.10,
-        riskReward: result.riskReward ?? "1:2",
-        qualityScore: result.qualityScore ?? 50,
-        confidence: result.confidence ?? "medium",
-        signals: result.signals ?? [],
-      })}
-      disabled={saveMutation.isPending}
-      className="text-3xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors"
-    >
-      {saveMutation.isPending ? "Saving..." : "📌 Save Trade"}
-    </button>
-  );
-}
-
 export default function IndiaScanner() {
-  const [scanType, setScanType] = useState<ScanType>("ema_alignment");
+  // Multi-select confluence: 1 selected = normal scan, 2+ = AND (all gates).
+  const [selectedTypes, setSelectedTypes] = useState<ScanType[]>(["ema_alignment"]);
   const [timeframe, setTimeframe] = useState<Timeframe>("1D");
   const [sector, setSector] = useState<string | undefined>(undefined);
   const [minQualityScore, setMinQualityScore] = useState(30);
 
+  const toggleType = (t: ScanType) => {
+    setSelectedTypes(prev =>
+      prev.includes(t)
+        ? (prev.length > 1 ? prev.filter(x => x !== t) : prev) // keep at least one
+        : [...prev, t]
+    );
+  };
+  const isCombo = selectedTypes.length > 1;
+
   const queryInput = useMemo(() => ({
-    scanType,
+    scanType: selectedTypes[0],
+    scanTypes: selectedTypes,
     timeframe,
     sector,
     minQualityScore,
     maxResults: 20,
     volumeMultiplier: 2.0,
-  }), [scanType, timeframe, sector, minQualityScore]);
+  }), [selectedTypes, timeframe, sector, minQualityScore]);
 
   const { data: results, isLoading, isError, refetch, isFetching } = trpc.india.scanner.useQuery(
     queryInput,
@@ -254,18 +234,33 @@ export default function IndiaScanner() {
           <Badge variant="outline" className="text-3xs ml-auto">Improved Engine v2</Badge>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="space-y-1.5">
-            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Scan Type</Label>
-            <Select value={scanType} onValueChange={(v) => setScanType(v as ScanType)}>
-              <SelectTrigger className="h-8 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SCAN_TYPES.map(t => (
-                  <SelectItem key={t.value} value={t.value} className="text-xs">{t.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="space-y-1.5 sm:col-span-2 lg:col-span-4">
+            <Label className="text-2xs uppercase tracking-wider text-muted-foreground">
+              Scan Strategy {isCombo && <span className="text-primary font-semibold normal-case">· Confluence ({selectedTypes.length} — must satisfy all)</span>}
+            </Label>
+            <div className="flex flex-wrap gap-1.5">
+              {SCAN_TYPES.map(t => {
+                const active = selectedTypes.includes(t.value);
+                return (
+                  <button
+                    key={t.value}
+                    onClick={() => toggleType(t.value)}
+                    aria-pressed={active}
+                    className={cn("px-2.5 py-1 rounded text-2xs font-medium transition-colors focus-ring min-h-[32px] border",
+                      active ? "bg-primary/15 border-primary/40 text-primary" : "bg-muted border-transparent text-muted-foreground hover:text-foreground")}>
+                    {active && <span className="mr-1">✓</span>}{t.label}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setSelectedTypes(SCAN_TYPES.map(t => t.value))}
+                className="px-2.5 py-1 rounded text-2xs font-medium transition-colors focus-ring min-h-[32px] border border-dashed border-border text-muted-foreground hover:text-foreground">
+                Select All (Confluence)
+              </button>
+            </div>
+            <p className="text-3xs text-muted-foreground">
+              Pick one strategy, or combine several — an asset must pass <span className="font-semibold">every</span> selected strategy's gate to appear.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Timeframe</Label>
@@ -316,6 +311,13 @@ export default function IndiaScanner() {
         </Button>
       </div>
 
+      {/* Strategy reliability for the selected strategies (journal-driven) */}
+      <StrategyReliabilityPanel
+        filterScanTypes={selectedTypes}
+        compact
+        title="Track Record — Selected Strategy"
+      />
+
       {/* Results */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -331,7 +333,7 @@ export default function IndiaScanner() {
               <CopyToTradingViewButton symbols={results.map(r => r.symbol)} />
             )}
             <div className="text-2xs text-muted-foreground">
-              {SCAN_TYPES.find(t => t.value === scanType)?.label} · {timeframe} · NSE
+              {selectedTypes.map(st => SCAN_TYPES.find(t => t.value === st)?.label).join(" + ")} · {timeframe} · NSE
             </div>
           </div>
         </div>

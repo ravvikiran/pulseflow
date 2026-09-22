@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StateView, QueryErrorState } from "@/components/shared/StateView";
+import { SaveTradeButton } from "@/components/shared/SaveTradeButton";
+import { StrategyReliabilityPanel } from "@/components/shared/StrategyReliability";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { toast } from "sonner";
 
@@ -123,7 +125,7 @@ function ResultRow({ result, index }: { result: any; index: number }) {
                 <BarChart3 className="w-3 h-3" /> View Chart
               </Button>
             </Link>
-            <CryptoSaveTradeButton result={result} />
+            <SaveTradeButton result={result} defaultMarket="crypto" defaultExchange="CRYPTO" variant="button" />
           </div>
         </div>
       )}
@@ -166,52 +168,31 @@ function CopySymbolsButton({ symbols, exchange, suffix = "" }: { symbols: string
   );
 }
 
-function CryptoSaveTradeButton({ result }: { result: any }) {
-  const utils = trpc.useUtils();
-  const saveMutation = trpc.journal.save.useMutation({
-    onSuccess: () => { utils.journal.all.invalidate(); toast.success(`${result.symbol} saved to journal`); },
-  });
-
-  return (
-    <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5"
-      onClick={() => saveMutation.mutate({
-        symbol: result.symbol,
-        name: result.name ?? result.symbol,
-        sector: result.sector ?? "Cryptocurrency",
-        exchange: result.exchange ?? "CRYPTO",
-        market: "crypto",
-        scanType: result.scanType ?? "ema_alignment",
-        entryPrice: result.price ?? 0,
-        entryDate: new Date().toISOString(),
-        stopLoss: result.stopLoss ?? (result.price ?? 0) * 0.95,
-        target: result.target ?? (result.price ?? 0) * 1.10,
-        riskReward: result.riskReward ?? "1:2",
-        qualityScore: result.qualityScore ?? 50,
-        confidence: result.confidence ?? "medium",
-        signals: result.signals ?? [],
-      })}
-      disabled={saveMutation.isPending}
-    >
-      📌 {saveMutation.isPending ? "Saving..." : "Save Trade"}
-    </Button>
-  );
-}
-
 export default function CryptoScanner() {
   const { isAuthenticated } = useAuth();
-  const [scanType, setScanType] = useState("ema_alignment");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["ema_alignment"]);
   const [timeframe, setTimeframe] = useState("1D");
   const [minQualityScore, setMinQualityScore] = useState(30);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
 
+  const toggleType = (t: string) => {
+    setSelectedTypes(prev =>
+      prev.includes(t)
+        ? (prev.length > 1 ? prev.filter(x => x !== t) : prev) // keep at least one
+        : [...prev, t]
+    );
+  };
+  const isCombo = selectedTypes.length > 1;
+
   const queryInput = useMemo(() => ({
-    scanType: scanType as any,
+    scanType: selectedTypes[0] as any,
+    scanTypes: selectedTypes as any,
     timeframe: timeframe as any,
     minQualityScore,
     maxResults: 20,
     volumeMultiplier: 2.0,
-  }), [scanType, timeframe, minQualityScore]);
+  }), [selectedTypes, timeframe, minQualityScore]);
 
   const { data: results, isLoading, isError, refetch, isFetching } = trpc.crypto.scanner.useQuery(queryInput, {
     refetchInterval: false,
@@ -224,7 +205,7 @@ export default function CryptoScanner() {
     onSuccess: () => toast.success("Scan deleted"),
   });
 
-  const currentScanType = SCAN_TYPES.find(s => s.value === scanType);
+  const currentScanType = SCAN_TYPES.find(s => s.value === selectedTypes[0]);
   const ScanIcon = currentScanType?.icon ?? Search;
 
   return (
@@ -259,25 +240,47 @@ export default function CryptoScanner() {
               <Badge variant="outline" className="text-3xs ml-auto">v2 Engine</Badge>
             </div>
 
-            {/* Scan Type */}
+            {/* Scan Type (multi-select confluence) */}
             <div className="space-y-2">
-              <label className="text-2xs uppercase tracking-wider text-muted-foreground font-semibold">Scan Strategy</label>
+              <label className="text-2xs uppercase tracking-wider text-muted-foreground font-semibold">
+                Scan Strategy {isCombo && <span className="text-primary normal-case">· Confluence ({selectedTypes.length})</span>}
+              </label>
               <div className="space-y-1.5">
-                {SCAN_TYPES.map(({ value, label, icon: Icon, desc }) => (
-                  <button key={value} onClick={() => setScanType(value)}
-                    aria-pressed={scanType === value}
+                {SCAN_TYPES.map(({ value, label, icon: Icon, desc }) => {
+                  const active = selectedTypes.includes(value);
+                  return (
+                  <button key={value} onClick={() => toggleType(value)}
+                    aria-pressed={active}
                     className={cn("w-full text-left px-3 py-2 rounded-md text-xs transition-all focus-ring",
-                      scanType === value
+                      active
                         ? "bg-primary/15 border border-primary/30 text-primary"
                         : "hover:bg-accent/50 text-muted-foreground hover:text-foreground border border-transparent")}>
                     <div className="flex items-center gap-2">
-                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      {active ? <Check className="w-3.5 h-3.5 shrink-0" /> : <Icon className="w-3.5 h-3.5 shrink-0" />}
                       <span className="font-medium">{label}</span>
                     </div>
-                    {scanType === value && <div className="text-3xs mt-1 text-primary/70">{desc}</div>}
+                    {active && <div className="text-3xs mt-1 text-primary/70">{desc}</div>}
                   </button>
-                ))}
+                  );
+                })}
               </div>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setSelectedTypes(SCAN_TYPES.map(s => s.value))}
+                  className="flex-1 px-2 py-1 rounded text-3xs font-medium border border-dashed border-border text-muted-foreground hover:text-foreground focus-ring">
+                  Select All (Confluence)
+                </button>
+                {isCombo && (
+                  <button
+                    onClick={() => setSelectedTypes([selectedTypes[0]])}
+                    className="px-2 py-1 rounded text-3xs font-medium border border-border text-muted-foreground hover:text-foreground focus-ring">
+                    Clear
+                  </button>
+                )}
+              </div>
+              <p className="text-3xs text-muted-foreground">
+                Combine strategies — an asset must pass <span className="font-semibold">every</span> selected gate.
+              </p>
             </div>
 
             {/* Timeframe */}
@@ -330,7 +333,7 @@ export default function CryptoScanner() {
                     />
                     <div className="flex gap-1.5">
                       <Button size="sm" className="flex-1 h-7 text-xs"
-                        onClick={() => saveScanMutation.mutate({ name: saveName, config: { scanType, timeframe } })}
+                        onClick={() => saveScanMutation.mutate({ name: saveName, config: { scanType: selectedTypes[0], timeframe } })}
                         disabled={!saveName.trim()}>
                         <Save className="w-3 h-3 mr-1" /> Save
                       </Button>
@@ -356,7 +359,7 @@ export default function CryptoScanner() {
               {savedScans.map((scan: any) => (
                 <div key={scan.id} className="flex items-center justify-between group">
                   <button className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate"
-                    onClick={() => { setScanType(scan.config?.scanType ?? "ema_alignment"); setTimeframe(scan.config?.timeframe ?? "1D"); }}>
+                    onClick={() => { setSelectedTypes([scan.config?.scanType ?? "ema_alignment"]); setTimeframe(scan.config?.timeframe ?? "1D"); }}>
                     {scan.name}
                   </button>
                   <button aria-label={`Delete saved scan ${scan.name}`}
@@ -371,7 +374,9 @@ export default function CryptoScanner() {
         </div>
 
         {/* Results Panel */}
-        <div className="lg:col-span-3 pf-card overflow-hidden">
+        <div className="lg:col-span-3 space-y-4">
+        <StrategyReliabilityPanel filterScanTypes={selectedTypes} compact title="Track Record — Selected Strategy" />
+        <div className="pf-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <ScanIcon className="w-4 h-4 text-primary" />
@@ -419,6 +424,7 @@ export default function CryptoScanner() {
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

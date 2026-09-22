@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-import { BookOpen, Trash2, RefreshCw } from "lucide-react";
+import { BookOpen, Trash2, RefreshCw, History, MessageSquareX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StrategyReliabilityPanel } from "@/components/shared/StrategyReliability";
+import {
+  AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+  AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
 function fmt(n: number | undefined | null, d = 2) {
@@ -33,7 +38,19 @@ export default function Journal() {
     },
   });
   const deleteMutation = trpc.journal.delete.useMutation({
-    onSuccess: () => { utils.journal.all.invalidate(); utils.journal.stats.invalidate(); toast.success("Trade deleted"); },
+    onSuccess: () => { utils.journal.all.invalidate(); utils.journal.stats.invalidate(); utils.journal.reliability.invalidate(); toast.success("Trade deleted"); },
+  });
+  const clearHistoryMutation = trpc.journal.clearHistory.useMutation({
+    onSuccess: (r) => {
+      utils.journal.all.invalidate(); utils.journal.stats.invalidate(); utils.journal.reliability.invalidate();
+      toast.success(r.removed > 0 ? `Cleared ${r.removed} closed trade(s)` : "No closed trades to clear");
+    },
+  });
+  const clearFeedbackMutation = trpc.journal.clearFeedback.useMutation({
+    onSuccess: (r) => {
+      utils.journal.all.invalidate(); utils.journal.reliability.invalidate();
+      toast.success(r.cleared > 0 ? `Reset feedback on ${r.cleared} trade(s)` : "No feedback to reset");
+    },
   });
 
   const filteredTrades = allTrades?.filter(t => marketFilter === "all" || t.market === marketFilter) ?? [];
@@ -51,10 +68,57 @@ export default function Journal() {
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">Track scanner suggestions & P&L performance</p>
         </div>
-        <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => checkMutation.mutate()} disabled={checkMutation.isPending}>
-          <RefreshCw className={cn("w-3.5 h-3.5", checkMutation.isPending && "animate-spin")} />
-          Check Prices
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Reset feedback */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                <MessageSquareX className="w-3.5 h-3.5" /> Reset Feedback
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset all feedback?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This clears the feedback (good/bad signal, early exit, late entry) from every trade.
+                  Trades themselves are kept. Strategy reliability will recompute from outcomes only.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => clearFeedbackMutation.mutate()}>Reset Feedback</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Reset history */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                <History className="w-3.5 h-3.5" /> Reset History
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reset trade history?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently deletes all <span className="font-semibold">closed</span> trades
+                  (target hit, SL hit, manually closed). Your <span className="font-semibold">open</span> positions
+                  are kept. This can't be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => clearHistoryMutation.mutate()}>Reset History</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => checkMutation.mutate()} disabled={checkMutation.isPending}>
+            <RefreshCw className={cn("w-3.5 h-3.5", checkMutation.isPending && "animate-spin")} />
+            Check Prices
+          </Button>
+        </div>
       </div>
 
       {/* Stats Summary */}
@@ -75,6 +139,9 @@ export default function Journal() {
           ))}
         </div>
       )}
+
+      {/* Strategy reliability — feedback + outcomes make the system improve */}
+      <StrategyReliabilityPanel />
 
       {/* Market filter + Tabs */}
       <div className="flex flex-wrap items-center gap-3">

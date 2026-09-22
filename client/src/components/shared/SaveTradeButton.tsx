@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
   AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
@@ -16,10 +17,11 @@ type Market = "india" | "crypto" | "us" | "commodities";
  * it shows a blocking dialog with "Go to Journal" and "Cancel" instead of
  * silently creating a second position.
  */
-export function SaveTradeButton({ result, defaultMarket = "india", defaultExchange = "NSE" }: {
+export function SaveTradeButton({ result, defaultMarket = "india", defaultExchange = "NSE", variant = "pill" }: {
   result: any;
   defaultMarket?: Market;
   defaultExchange?: string;
+  variant?: "pill" | "button";
 }) {
   const [, setLocation] = useLocation();
   const [dupOpen, setDupOpen] = useState(false);
@@ -61,13 +63,19 @@ export function SaveTradeButton({ result, defaultMarket = "india", defaultExchan
 
   return (
     <>
-      <button
-        onClick={handleSave}
-        disabled={saveMutation.isPending}
-        className="text-3xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors focus-ring disabled:opacity-50"
-      >
-        {saveMutation.isPending ? "Saving..." : "📌 Save Trade"}
-      </button>
+      {variant === "button" ? (
+        <Button size="sm" variant="outline" className="h-7 text-xs gap-1.5" onClick={handleSave} disabled={saveMutation.isPending}>
+          📌 {saveMutation.isPending ? "Saving..." : "Save Trade"}
+        </Button>
+      ) : (
+        <button
+          onClick={handleSave}
+          disabled={saveMutation.isPending}
+          className="text-3xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors focus-ring disabled:opacity-50"
+        >
+          {saveMutation.isPending ? "Saving..." : "📌 Save Trade"}
+        </button>
+      )}
 
       <AlertDialog open={dupOpen} onOpenChange={setDupOpen}>
         <AlertDialogContent>
