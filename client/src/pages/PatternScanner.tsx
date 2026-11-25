@@ -46,9 +46,6 @@ const MARKETS = [
 
 const TIMEFRAMES = [
   { value: "1d", label: "Daily" },
-  { value: "4h", label: "4 Hour" },
-  { value: "1h", label: "1 Hour" },
-  { value: "15m", label: "15 Min" },
   { value: "1w", label: "Weekly" },
 ];
 

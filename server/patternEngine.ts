@@ -6,8 +6,6 @@
  * confirmation (price structure + volume + momentum) to reduce false positives.
  */
 
-import { generateCandle } from "./marketEngine";
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PatternType =
@@ -64,35 +62,6 @@ export interface PatternScanOptions {
   requireVolumeConfirmation?: boolean;
   filterFalseBreakouts?: boolean;
   maxResultsPerAsset?: number;
-}
-
-// ─── Candle Generation ────────────────────────────────────────────────────────
-
-/** Generate a synthetic OHLCV series with configurable trend and volatility */
-function generateCandleSeries(
-  basePrice: number,
-  symbol: string,
-  count: number,
-  trend: number = 0,
-  timeframe: Timeframe = "1d",
-  seed: number = 0
-): Candle[] {
-  const candles: Candle[] = [];
-  const symbolSeed = symbol.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  const tfMultiplier: Record<Timeframe, number> = { "15m": 900000, "1h": 3600000, "4h": 14400000, "1d": 86400000, "1w": 604800000 };
-  const now = Date.now();
-  let price = basePrice;
-
-  for (let i = count - 1; i >= 0; i--) {
-    const candleSeed = symbolSeed + seed + i * 7;
-    const candle = generateCandle(price, candleSeed, trend);
-    candles.push({
-      ...candle,
-      timestamp: now - i * tfMultiplier[timeframe],
-    });
-    price = candle.close;
-  }
-  return candles;
 }
 
 // ─── Technical Helpers ────────────────────────────────────────────────────────
@@ -809,70 +778,6 @@ const ALL_DETECTORS: Array<(candles: Candle[], symbol: string, timeframe: Timefr
   detectTrendlineBreakout,
 ];
 
-export function scanAssetForPatterns(
-  symbol: string,
-  basePrice: number,
-  options: PatternScanOptions = {}
-): PatternResult[] {
-  const {
-    timeframes = ["1d", "4h"],
-    minConfidence = 50,
-    requireVolumeConfirmation = false,
-    filterFalseBreakouts = true,
-    maxResultsPerAsset = 3,
-  } = options;
-
-  const results: PatternResult[] = [];
-  const symbolSeed = symbol.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-
-  for (const timeframe of timeframes) {
-    const candleCount = 60;
-    // Use different trend seeds per timeframe to get varied patterns
-    const trendSeed = (symbolSeed % 5) - 2; // -2 to +2
-    const candles = generateCandleSeries(basePrice, symbol, candleCount, trendSeed * 0.3, timeframe, symbolSeed);
-
-    for (const detector of ALL_DETECTORS) {
-      try {
-        const result = detector(candles, symbol, timeframe);
-        if (!result) continue;
-        if (result.confidenceScore < minConfidence) continue;
-        if (requireVolumeConfirmation && !result.volumeConfirmed) continue;
-        if (filterFalseBreakouts && result.isFalseBreakout) continue;
-        results.push(result);
-      } catch {
-        // Silently skip failed detectors
-      }
-    }
-  }
-
-  // Sort by confidence, deduplicate by pattern type + timeframe, limit per asset
-  const seen = new Set<string>();
-  return results
-    .sort((a, b) => b.confidenceScore - a.confidenceScore)
-    .filter(r => {
-      const key = `${r.patternType}:${r.timeframe}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, maxResultsPerAsset);
-}
-
-export function runPatternScanner(
-  assets: Array<{ symbol: string; basePrice?: number; sector?: string | null }>,
-  options: PatternScanOptions = {}
-): PatternResult[] {
-  const allResults: PatternResult[] = [];
-
-  for (const asset of assets) {
-    const basePrice = asset.basePrice ?? 1000;
-    const results = scanAssetForPatterns(asset.symbol, basePrice, options);
-    allResults.push(...results);
-  }
-
-  return allResults.sort((a, b) => b.confidenceScore - a.confidenceScore);
-}
-
 export const PATTERN_NAMES: Record<PatternType, string> = {
   ascending_triangle: "Ascending Triangle",
   descending_triangle: "Descending Triangle",
@@ -897,7 +802,8 @@ export const PATTERN_NAMES: Record<PatternType, string> = {
 export function detectPatternsOnCandles(
   candles: Candle[],
   symbol: string,
-  options: PatternScanOptions = {}
+  options: PatternScanOptions = {},
+  timeframe: Timeframe = "1d"
 ): PatternResult[] {
   const {
     minConfidence = 50,
@@ -907,7 +813,6 @@ export function detectPatternsOnCandles(
   } = options;
 
   const results: PatternResult[] = [];
-  const timeframe: Timeframe = "1d"; // Real data is always daily from Yahoo
 
   for (const detector of ALL_DETECTORS) {
     try {

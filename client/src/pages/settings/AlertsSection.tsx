@@ -69,12 +69,12 @@ export function AlertsSection({ prefs, onUpdate, isSaving }: AlertsSectionProps)
                   <Mail className="w-3.5 h-3.5 text-muted-foreground" />
                   <p className="text-sm font-medium text-foreground">Email Alerts</p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">Receive alerts via email</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Not available yet. Alerts are delivered in the app only.</p>
               </div>
               <Toggle
-                checked={prefs.alertEmail}
-                onChange={(v) => onUpdate({ alertEmail: v })}
-                disabled={isSaving}
+                checked={false}
+                onChange={() => {}}
+                disabled
                 accentClass="bg-amber-500"
               />
             </div>
@@ -99,14 +99,13 @@ export function AlertsSection({ prefs, onUpdate, isSaving }: AlertsSectionProps)
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />
                   <p className="text-sm font-medium text-foreground">Telegram Alerts</p>
-                  <span className="text-xs bg-blue-500/15 text-blue-400 border border-blue-500/25 px-1.5 py-0.5 rounded-md font-medium">Beta</span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">Receive alerts via Telegram bot</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Not available yet. Alerts are delivered in the app only.</p>
               </div>
               <Toggle
-                checked={prefs.alertTelegram}
-                onChange={(v) => onUpdate({ alertTelegram: v })}
-                disabled={isSaving}
+                checked={false}
+                onChange={() => {}}
+                disabled
                 accentClass="bg-amber-500"
               />
             </div>

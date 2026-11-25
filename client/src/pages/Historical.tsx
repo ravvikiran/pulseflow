@@ -55,8 +55,7 @@ export default function Historical() {
     return (sentimentHistory as any[]).map((s: any) => ({
       date: new Date(s.timestamp).toLocaleDateString("en", { month: "short", day: "numeric" }),
       score: Math.round(Number(s.sentimentScore) * 100) / 100,
-      btcDominance: Math.round(Number(s.btcDominance ?? 0) * 100) / 100,
-      volatility: Math.round(Number(s.volatilityIndex ?? 0) * 100) / 100,
+      volatility: s.volatilityIndex != null ? Math.round(Number(s.volatilityIndex) * 100) / 100 : null,
     }));
   }, [sentimentHistory]);
 
@@ -93,7 +92,7 @@ export default function Historical() {
           Historical Analysis
         </h1>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Sector rotation history · Market sentiment trends · Performance tracking
+          Sector rotation history · Market sentiment trends · Performance tracking (rebuilt from real daily closes)
         </p>
       </div>
 
@@ -154,25 +153,10 @@ export default function Historical() {
                 </div>
               </div>
 
-              {/* BTC Dominance + Volatility */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* India VIX (real, from Yahoo Finance) */}
+              <div className="grid grid-cols-1 gap-4">
                 <div className="pf-card p-4">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">BTC Dominance (%)</div>
-                  <div className="h-40">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={sentimentChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="date" tick={{ fontSize: 8 }} tickLine={false} axisLine={false} interval={Math.floor(sentimentChartData.length / 6)} />
-                        <YAxis tick={{ fontSize: 8 }} tickLine={false} axisLine={false} domain={[40, 55]} />
-                        <RechartsTooltip contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: "6px", fontSize: "10px" }} />
-                        <Line type="monotone" dataKey="btcDominance" stroke="#a855f7" strokeWidth={2} dot={false} name="BTC Dom %" />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <div className="pf-card p-4">
-                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Volatility Index</div>
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">India VIX</div>
                   <div className="h-40">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={sentimentChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -328,7 +312,7 @@ export default function Historical() {
                   { value: "ema_alignment", label: "EMA Alignment" },
                   { value: "volume_spike", label: "Volume Spike" },
                   { value: "breakout_52w", label: "52-Week High Breakout" },
-                  { value: "breakout_ath", label: "ATH Breakout" },
+                  { value: "ath_breakout", label: "ATH Breakout" },
                   { value: "momentum_continuation", label: "Momentum Continuation" },
                   { value: "relative_strength", label: "Relative Strength" },
                 ].map(s => <SelectItem key={s.value} value={s.value} className="text-xs">{s.label}</SelectItem>)}

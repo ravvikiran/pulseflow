@@ -49,21 +49,22 @@ export const journalRouter = router({
   /** Save a new trade from scanner result */
   save: publicProcedure
     .input(z.object({
-      symbol: z.string(),
-      name: z.string(),
-      sector: z.string(),
-      exchange: z.string(),
+      symbol: z.string().trim().min(1).max(32),
+      name: z.string().max(200),
+      sector: z.string().max(100),
+      exchange: z.string().max(50),
       market: z.enum(["india", "crypto", "us", "commodities"]),
-      scanType: z.string(),
-      entryPrice: z.number(),
-      entryDate: z.string(),
-      stopLoss: z.number(),
-      target: z.number(),
-      riskReward: z.string(),
-      qualityScore: z.number(),
-      confidence: z.string(),
-      signals: z.array(z.string()),
-      notes: z.string().optional(),
+      scanType: z.string().max(64),
+      // entryPrice is the P&L denominator, so it must be > 0
+      entryPrice: z.number().positive().finite(),
+      entryDate: z.string().max(64),
+      stopLoss: z.number().nonnegative().finite(),
+      target: z.number().nonnegative().finite(),
+      riskReward: z.string().max(32),
+      qualityScore: z.number().finite(),
+      confidence: z.string().max(32),
+      signals: z.array(z.string().max(200)).max(50),
+      notes: z.string().max(5000).optional(),
     }))
     .mutation(async ({ input }) => {
       // Returns { success:false, duplicate:true, existingId, existingTrade }
@@ -73,7 +74,7 @@ export const journalRouter = router({
 
   /** Check whether an open trade already exists for a symbol+market (pre-save UX) */
   checkDuplicate: publicProcedure
-    .input(z.object({ symbol: z.string(), market: z.enum(["india", "crypto", "us", "commodities"]) }))
+    .input(z.object({ symbol: z.string().trim().min(1).max(32), market: z.enum(["india", "crypto", "us", "commodities"]) }))
     .query(async ({ input }) => {
       const existing = findOpenTrade(input.symbol, input.market);
       return { duplicate: !!existing, existingId: existing?.id ?? null };
@@ -82,13 +83,14 @@ export const journalRouter = router({
   /** Close a trade manually */
   close: publicProcedure
     .input(z.object({
-      id: z.string(),
-      exitPrice: z.number(),
-      notes: z.string().optional(),
+      id: z.string().max(128),
+      exitPrice: z.number().positive().finite(),
+      notes: z.string().max(5000).optional(),
     }))
     .mutation(async ({ input }) => {
       const trade = getAllTrades().find(t => t.id === input.id);
-      if (!trade) return { success: false };
+      // Only open trades can be closed; re-closing would overwrite exit data.
+      if (!trade || trade.status !== "open") return { success: false };
 
       const pnl = input.exitPrice - trade.entryPrice;
       const pnlPercent = (pnl / trade.entryPrice) * 100;
@@ -106,14 +108,14 @@ export const journalRouter = router({
 
   /** Delete a trade */
   delete: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string().max(128) }))
     .mutation(async ({ input }) => {
       return { success: deleteTrade(input.id) };
     }),
 
   /** Add notes to a trade */
   addNote: publicProcedure
-    .input(z.object({ id: z.string(), notes: z.string() }))
+    .input(z.object({ id: z.string().max(128), notes: z.string().max(5000) }))
     .mutation(async ({ input }) => {
       const result = updateTrade(input.id, { notes: input.notes });
       return { success: !!result };
@@ -122,9 +124,9 @@ export const journalRouter = router({
   /** Add feedback to a trade (for improving scanner logic) */
   addFeedback: publicProcedure
     .input(z.object({
-      id: z.string(),
+      id: z.string().max(128),
       feedback: z.enum(["good_signal", "bad_signal", "early_exit", "late_entry"]),
-      feedbackNote: z.string().optional(),
+      feedbackNote: z.string().max(2000).optional(),
     }))
     .mutation(async ({ input }) => {
       const result = updateTrade(input.id, { feedback: input.feedback, feedbackNote: input.feedbackNote });

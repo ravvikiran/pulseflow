@@ -7,26 +7,36 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
 import {
-  getAllAssets, getAssetBySymbol, searchAssets,
-  getLatestSentiment, getSentimentHistory,
+  getAssetBySymbol,
   getUserWatchlists, getWatchlistWithItems, createWatchlist, deleteWatchlist,
   addToWatchlist, removeFromWatchlist,
   getFavoriteSectors, toggleFavoriteSector,
   getSavedScans, createSavedScan, deleteSavedScan,
   getUserAlerts, createAlert, updateAlert, deleteAlert,
   getUnreadAlertCount, getAlertHistory, markAlertsRead,
-  getRecentScanResults, getHistoricalSnapshots,
+  getRecentScanResults,
 } from "./db";
 import {
-  generateCurrentPrice, generateMarketData, generateMarketSentiment,
-  generateSectorPerformance, runScanner,
-  NSE_STOCKS, CRYPTO_ASSETS, INDICES,
-  calculateEMA, calculateRSI, calculateMomentumScore,
-} from "./marketEngine";
-import { runImprovedScanner, type ScanType as ImprovedScanType, type Timeframe as ImprovedTimeframe } from "./scannerEngine";
-import { runPatternScanner, PATTERN_NAMES, type PatternResult } from "./patternEngine";
-import { runDataValidation, NSE_REGISTRY, CRYPTO_REGISTRY, US_REGISTRY } from "./assetRegistry";
-import { getCurrentPrice, getCurrentPrices, getAssetDetailData, getRealSectorPerformance, runRealScanner, getHistoricalCandles, runRealPatternScanner } from "./dataProvider";
+  getCurrentPrice, getCurrentPrices, withPrices, getAssetDetailData, getRealSectorPerformance,
+  runRealScanner, getHistoricalCandles, runRealPatternScanner, mapLimit,
+} from "./dataProvider";
+import {
+  getMarketSentiment, getHighLowCounts, getIndiaSentimentHistory, getSectorRotationHistory, getSectorDailyHistory,
+  sentimentFromChanges, stateFromScore,
+} from "./marketAnalytics";
+import {
+  getFearGreedNow, getFearGreedHistory, getCryptoGlobal, getTopExchanges, getFiiDiiActivity, fearGreedLabel,
+} from "./externalData";
+import {
+  runDataValidation, NSE_REGISTRY, CRYPTO_REGISTRY, US_REGISTRY, INDEX_REGISTRY, COMMODITY_REGISTRY,
+} from "./assetRegistry";
+
+// ─── Input Bounds ─────────────────────────────────────────────────────────────
+// Upper bounds on numeric/array inputs so a single request can't force the
+// server to build huge arrays or fan out to hundreds of Yahoo calls.
+const boundedDays = (fallback: number) => z.number().int().min(1).max(365).default(fallback);
+const boundedLimit = (fallback: number, max = 500) => z.number().int().min(1).max(max).default(fallback);
+const symbolInput = z.string().trim().min(1).max(32);
 
 // ─── Domain Constants ─────────────────────────────────────────────────────────
 
@@ -36,32 +46,50 @@ const INDIA_SECTORS = [
   "Automobiles", "Real Estate", "Telecom", "FMCG", "Infrastructure",
 ];
 
-const CRYPTO_SECTORS = ["Cryptocurrency"];
-
 const US_SECTORS = [
   "Technology", "Financials", "Healthcare", "Energy",
   "Consumer Discretionary", "Consumer Staples", "Industrials", "Communication Services",
 ];
 
-const US_STOCKS = [
-  { symbol: "AAPL", name: "Apple Inc.", sector: "Technology", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "MSFT", name: "Microsoft Corp.", sector: "Technology", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "GOOGL", name: "Alphabet Inc.", sector: "Technology", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "AMZN", name: "Amazon.com Inc.", sector: "Consumer Discretionary", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "NVDA", name: "NVIDIA Corp.", sector: "Technology", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "META", name: "Meta Platforms", sector: "Technology", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "TSLA", name: "Tesla Inc.", sector: "Consumer Discretionary", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "JPM", name: "JPMorgan Chase", sector: "Financials", exchange: "NYSE", currency: "USD" },
-  { symbol: "JNJ", name: "Johnson & Johnson", sector: "Healthcare", exchange: "NYSE", currency: "USD" },
-  { symbol: "XOM", name: "Exxon Mobil", sector: "Energy", exchange: "NYSE", currency: "USD" },
-];
+const INDIA_INDICES = INDEX_REGISTRY.filter(i => i.domain === "INDIA");
+const US_DASHBOARD_INDICES = INDEX_REGISTRY.filter(i => ["SPX", "NDX", "DJI", "VIX"].includes(i.symbol));
 
-const US_INDICES = [
-  { symbol: "SPX", name: "S&P 500", sector: "US Index", exchange: "NYSE", currency: "USD" },
-  { symbol: "NDX", name: "NASDAQ 100", sector: "US Index", exchange: "NASDAQ", currency: "USD" },
-  { symbol: "DJI", name: "Dow Jones Industrial", sector: "US Index", exchange: "NYSE", currency: "USD" },
-  { symbol: "VIX", name: "CBOE Volatility Index", sector: "US Index", exchange: "CBOE", currency: "USD" },
+type Market = "india" | "crypto" | "us";
+interface AssetRef {
+  symbol: string; name: string; sector: string; exchange: string; currency: string;
+  market: Market; kind: "stock" | "crypto" | "index";
+}
+
+/** Every tradeable symbol the app knows about, from the registries only. */
+const ALL_REFS: AssetRef[] = [
+  ...NSE_REGISTRY.map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange as string, currency: a.currency as string, market: "india" as Market, kind: "stock" as const })),
+  ...INDIA_INDICES.map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange as string, currency: a.currency as string, market: "india" as Market, kind: "index" as const })),
+  ...CRYPTO_REGISTRY.map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange as string, currency: a.currency as string, market: "crypto" as Market, kind: "crypto" as const })),
+  ...US_REGISTRY.map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange as string, currency: a.currency as string, market: "us" as Market, kind: "stock" as const })),
+  ...INDEX_REGISTRY.filter(i => i.domain === "US").map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange as string, currency: a.currency as string, market: "us" as Market, kind: "index" as const })),
 ];
+const REF_BY_SYMBOL = new Map(ALL_REFS.map(r => [r.symbol, r]));
+const COMMODITY_SYMBOLS = new Set(COMMODITY_REGISTRY.map(c => c.symbol));
+
+/** Reject symbols that aren't in a registry so arbitrary input never reaches Yahoo. */
+function requireKnownSymbol(symbol: string): void {
+  if (!REF_BY_SYMBOL.has(symbol) && !COMMODITY_SYMBOLS.has(symbol)) {
+    throw new TRPCError({ code: "NOT_FOUND", message: `Unknown symbol '${symbol}'` });
+  }
+}
+
+function marketOf(symbol: string): Market {
+  return REF_BY_SYMBOL.get(symbol)?.market ?? "india";
+}
+
+function unavailable(what: string): never {
+  throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: `Live data for ${what} is currently unavailable. Try again shortly.` });
+}
+
+const topMovers = <T extends { changePercent: number }>(list: T[], n: number) => ({
+  gainers: [...list].sort((a, b) => b.changePercent - a.changePercent).slice(0, n),
+  losers: [...list].sort((a, b) => a.changePercent - b.changePercent).slice(0, n),
+});
 
 // ─── Shared scanner scan types ────────────────────────────────────────────────
 const SCAN_TYPES = z.enum([
@@ -69,86 +97,76 @@ const SCAN_TYPES = z.enum([
   "momentum_continuation", "relative_strength", "consolidation_breakout",
 ]);
 
-// Improved scanner scan types (subset without consolidation_breakout, ath_breakout renamed)
 const IMPROVED_SCAN_TYPES = z.enum([
   "ema_alignment", "volume_spike", "breakout_52w", "ath_breakout",
   "momentum_continuation", "relative_strength",
 ]);
 
-const IMPROVED_TIMEFRAMES = z.enum(["15M", "1H", "4H", "1D", "1W"]);
+// Scans run on daily candles from Yahoo Finance. Intraday timeframes would need
+// a different data feed, so only "1D" is accepted.
+const SCAN_TIMEFRAMES = z.enum(["1D"]);
 
 // Optional multi-select for confluence scans. When provided (length >= 1),
 // it takes precedence over the single `scanType`. 1 = normal scan, >1 = AND.
 const IMPROVED_SCAN_TYPES_ARRAY = z.array(IMPROVED_SCAN_TYPES).min(1).max(6).optional();
 const SCAN_TYPES_ARRAY = z.array(SCAN_TYPES).min(1).max(7).optional();
 
-const PATTERN_TIMEFRAMES = z.enum(["15m", "1h", "4h", "1d", "1w"]);
+const PATTERN_TIMEFRAMES = z.enum(["1d", "1w"]);
+
+const patternInput = {
+  timeframes: z.array(PATTERN_TIMEFRAMES).min(1).default(["1d"]),
+  minConfidence: z.number().min(0).max(100).default(50),
+  requireVolumeConfirmation: z.boolean().default(false),
+  filterFalseBreakouts: z.boolean().default(true),
+};
+
+interface PulseEvent {
+  id: string;
+  type: "breakout" | "volume_spike" | "momentum";
+  symbol: string;
+  domain: Market;
+  message: string;
+  timestamp: Date;
+  severity: "info" | "warning" | "success";
+}
+let pulseCache: { at: number; events: PulseEvent[] } | null = null;
 
 // ─── Global Market Router ─────────────────────────────────────────────────────
 const globalRouter = router({
   // Summary of all three market domains for the Home Dashboard
   overview: publicProcedure.query(async () => {
-    // Calculate real sentiment from actual stock price changes
-    const allNseSymbols = NSE_REGISTRY.map(a => a.symbol);
-    const nsePrices = await getCurrentPrices(allNseSymbols);
-    let advanceCount = 0, declineCount = 0, unchangedCount = 0;
-    for (const [, p] of nsePrices) {
-      if (p.changePercent > 0.1) advanceCount++;
-      else if (p.changePercent < -0.1) declineCount++;
-      else unchangedCount++;
-    }
-    const adRatio = declineCount > 0 ? advanceCount / declineCount : advanceCount > 0 ? 5 : 1;
-    const sentimentScore = Math.round(((adRatio - 1) / 2) * 50);
-    const marketState = sentimentScore > 15 ? "bullish" : sentimentScore < -15 ? "bearish" : "neutral";
-    const indiaSentiment = {
-      sentimentScore, marketState, advanceCount, declineCount, unchangedCount,
-      advanceDeclineRatio: Math.round(adRatio * 100) / 100,
-      breadthScore: Math.round((advanceCount / Math.max(1, advanceCount + declineCount)) * 100),
-      volatilityIndex: 0, btcDominance: 0, totalMarketCap: 0, fearGreedIndex: 0,
-    };
-    const cryptoSentiment = {
-      sentimentScore: Math.round((Math.sin(Date.now() / 3600000 * 0.7) * 35 + 10) * 100) / 100,
-      marketState: "neutral" as const,
-      fearGreedIndex: Math.round((35 + Math.sin(Date.now() / 3600000 * 0.5) * 25) * 100) / 100,
-      btcDominance: Math.round((44 + Math.sin(Date.now() / 3600000 * 0.3) * 8) * 100) / 100,
-    };
-    const usSentiment = {
-      sentimentScore: Math.round((Math.sin(Date.now() / 3600000 * 0.4) * 30 + 15) * 100) / 100,
-      marketState: "bullish" as const,
-      spxChange: Math.round((Math.sin(Date.now() / 3600000 * 0.2) * 1.5 + 0.3) * 100) / 100,
-    };
+    const [nsePrices, cryptoPrices, usPrices, fearGreed, cryptoGlobal] = await Promise.all([
+      getCurrentPrices(NSE_REGISTRY.map(a => a.symbol)),
+      getCurrentPrices(CRYPTO_REGISTRY.map(a => a.symbol)),
+      getCurrentPrices([...US_REGISTRY.map(a => a.symbol), "SPX"]),
+      getFearGreedNow(),
+      getCryptoGlobal(),
+    ]);
 
-    // India top movers (NSE only — real data)
-    const indiaSymbols = NSE_REGISTRY.slice(0, 30).map(a => a.symbol); // Top 30 for speed
-    const indiaPriceMap = await getCurrentPrices(indiaSymbols);
-    const indiaPrices = NSE_REGISTRY.slice(0, 30).map(a => ({
-      symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency,
-      ...(indiaPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
-    }));
-    const indiaGainers = [...indiaPrices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 3);
-    const indiaLosers = [...indiaPrices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 3);
+    const indiaList = NSE_REGISTRY.flatMap(a => (nsePrices.has(a.symbol) ? [{ ...a, ...nsePrices.get(a.symbol)! }] : []));
+    const cryptoList = CRYPTO_REGISTRY.flatMap(a => (cryptoPrices.has(a.symbol) ? [{ ...a, ...cryptoPrices.get(a.symbol)! }] : []));
+    const usList = US_REGISTRY.flatMap(a => (usPrices.has(a.symbol) ? [{ ...a, ...usPrices.get(a.symbol)! }] : []));
 
-    // Crypto top movers (real data)
-    const cryptoSymbols = CRYPTO_REGISTRY.slice(0, 15).map(a => a.symbol); // Top 15 for speed
-    const cryptoPriceMap = await getCurrentPrices(cryptoSymbols);
-    const cryptoPrices = CRYPTO_REGISTRY.slice(0, 15).map(a => ({
-      symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency,
-      ...(cryptoPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
-    }));
-    const cryptoGainers = [...cryptoPrices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 3);
-    const cryptoLosers = [...cryptoPrices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 3);
-
-    // US top movers (US stocks only)
-    const usSymbols = US_STOCKS.map(a => a.symbol);
-    const usPriceMap = await getCurrentPrices(usSymbols);
-    const usPrices = US_STOCKS.map(a => ({ ...a, ...(usPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
-    const usGainers = [...usPrices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 3);
-    const usLosers = [...usPrices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 3);
+    const indiaSentiment = indiaList.length ? sentimentFromChanges(indiaList.map(a => a.changePercent)) : null;
+    const usSentimentBase = usList.length ? sentimentFromChanges(usList.map(a => a.changePercent)) : null;
+    const cryptoScore = fearGreed ? Math.round((fearGreed.value - 50) * 2) : null;
 
     return {
-      india: { sentiment: indiaSentiment, topGainers: indiaGainers, topLosers: indiaLosers },
-      crypto: { sentiment: cryptoSentiment, topGainers: cryptoGainers, topLosers: cryptoLosers },
-      us: { sentiment: usSentiment, topGainers: usGainers, topLosers: usLosers },
+      india: { sentiment: indiaSentiment, topGainers: topMovers(indiaList, 3).gainers, topLosers: topMovers(indiaList, 3).losers },
+      crypto: {
+        sentiment: fearGreed && cryptoScore !== null
+          ? { sentimentScore: cryptoScore, marketState: stateFromScore(cryptoScore), fearGreedIndex: fearGreed.value, btcDominance: cryptoGlobal?.btcDominance ?? null }
+          : null,
+        topGainers: topMovers(cryptoList, 3).gainers,
+        topLosers: topMovers(cryptoList, 3).losers,
+      },
+      us: {
+        sentiment: usSentimentBase
+          ? { sentimentScore: usSentimentBase.sentimentScore, marketState: usSentimentBase.marketState, spxChange: usPrices.get("SPX")?.changePercent ?? null }
+          : null,
+        topGainers: topMovers(usList, 3).gainers,
+        topLosers: topMovers(usList, 3).losers,
+      },
     };
   }),
 
@@ -156,22 +174,59 @@ const globalRouter = router({
     return getAlertHistory(ctx.user.id, 5);
   }),
 
-  // Cross-market pattern scanner — all markets combined
+  // Live market signals for the Market Pulse panel: big movers plus real
+  // volume-spike and 52-week-high scanner hits. Cached for a minute.
+  pulse: publicProcedure.query(async () => {
+    if (pulseCache && Date.now() - pulseCache.at < 60_000) return pulseCache.events;
+
+    const events: PulseEvent[] = [];
+    const asOf = new Date();
+    const domains: Array<{ domain: Market; registry: Array<{ symbol: string }> }> = [
+      { domain: "india", registry: NSE_REGISTRY },
+      { domain: "crypto", registry: CRYPTO_REGISTRY },
+      { domain: "us", registry: US_REGISTRY },
+    ];
+
+    for (const { domain, registry } of domains) {
+      const prices = await getCurrentPrices(registry.map(a => a.symbol));
+      for (const [symbol, p] of prices) {
+        if (Math.abs(p.changePercent) >= 3) {
+          events.push({
+            id: `move:${symbol}`, type: "momentum", symbol, domain, timestamp: asOf,
+            severity: p.changePercent > 0 ? "success" : "warning",
+            message: `${symbol} ${p.changePercent > 0 ? "up" : "down"} ${Math.abs(p.changePercent).toFixed(2)}% today`,
+          });
+        }
+      }
+      const [spikes, highs] = await Promise.all([
+        runRealScanner({ domain, scanType: "volume_spike", maxResults: 4 }),
+        runRealScanner({ domain, scanType: "breakout_52w", maxResults: 4 }),
+      ]);
+      for (const r of spikes) {
+        events.push({ id: `vol:${r.symbol}`, type: "volume_spike", symbol: r.symbol, domain, timestamp: asOf, severity: "warning", message: `${r.symbol} unusual volume (${r.signals[0] ?? "volume spike"})` });
+      }
+      for (const r of highs) {
+        events.push({ id: `hi:${r.symbol}`, type: "breakout", symbol: r.symbol, domain, timestamp: asOf, severity: "success", message: `${r.symbol} near its 52-week high at ${r.price}` });
+      }
+    }
+
+    // Same symbol can appear under several signals; keep the first of each id and cap the list.
+    const seen = new Set<string>();
+    const unique = events.filter(e => (seen.has(e.id) ? false : (seen.add(e.id), true))).slice(0, 40);
+    pulseCache = { at: Date.now(), events: unique };
+    return unique;
+  }),
+
+  // Cross-market pattern scanner, all markets combined
   patterns: publicProcedure
-    .input(z.object({
-      market: z.enum(["india", "crypto", "us", "all"]).default("all"),
-      timeframes: z.array(PATTERN_TIMEFRAMES).default(["1d"]),
-      minConfidence: z.number().default(50),
-      requireVolumeConfirmation: z.boolean().default(false),
-      filterFalseBreakouts: z.boolean().default(true),
-    }))
+    .input(z.object({ market: z.enum(["india", "crypto", "us", "all"]).default("all"), ...patternInput }))
     .query(async ({ input }) => {
-      const assets: Array<{ symbol: string; basePrice?: number; sector?: string | null }> = [];
+      const assets: Array<{ symbol: string; sector?: string | null }> = [];
       if (input.market === "india" || input.market === "all") assets.push(...NSE_REGISTRY);
       if (input.market === "crypto" || input.market === "all") assets.push(...CRYPTO_REGISTRY);
       if (input.market === "us" || input.market === "all") assets.push(...US_REGISTRY);
       return runRealPatternScanner(assets, {
-        timeframes: input.timeframes as any,
+        timeframes: input.timeframes,
         minConfidence: input.minConfidence,
         requireVolumeConfirmation: input.requireVolumeConfirmation,
         filterFalseBreakouts: input.filterFalseBreakouts,
@@ -179,7 +234,7 @@ const globalRouter = router({
       });
     }),
 
-  // Data validation endpoint — registry integrity audit
+  // Data validation endpoint, registry integrity audit
   validateRegistry: publicProcedure.query(async () => {
     return runDataValidation();
   }),
@@ -187,158 +242,110 @@ const globalRouter = router({
 
 // ─── India Market Router ──────────────────────────────────────────────────────
 const indiaRouter = router({
-  // Dashboard overview — NSE stocks and Indian indices only
+  // Dashboard overview: NSE stocks and Indian indices only
   dashboard: publicProcedure.query(async () => {
-    // Real sentiment from actual stock advances/declines
-    const allNseSymbols = NSE_REGISTRY.map(a => a.symbol);
-    const allPrices = await getCurrentPrices(allNseSymbols);
-    let advCount = 0, decCount = 0, uncCount = 0;
-    for (const [, p] of allPrices) {
-      if (p.changePercent > 0.1) advCount++;
-      else if (p.changePercent < -0.1) decCount++;
-      else uncCount++;
-    }
-    const adR = decCount > 0 ? advCount / decCount : advCount > 0 ? 5 : 1;
-    const sentScore = Math.round(((adR - 1) / 2) * 50);
-    const sentiment = {
-      sentimentScore: sentScore,
-      marketState: (sentScore > 15 ? "bullish" : sentScore < -15 ? "bearish" : "neutral") as "bullish" | "bearish" | "neutral",
-      advanceCount: advCount, declineCount: decCount, unchangedCount: uncCount,
-      advanceDeclineRatio: Math.round(adR * 100) / 100,
-      breadthScore: Math.round((advCount / Math.max(1, advCount + decCount)) * 100),
-      volatilityIndex: 0, btcDominance: 0, totalMarketCap: 0, fearGreedIndex: 0,
-    };
-    const sectorData = await getRealSectorPerformance(INDIA_SECTORS, "india");
+    const [priceMap, fiiDii, sectorData] = await Promise.all([
+      getCurrentPrices([...NSE_REGISTRY.map(a => a.symbol), ...INDIA_INDICES.map(i => i.symbol)]),
+      getFiiDiiActivity(),
+      getRealSectorPerformance(INDIA_SECTORS, "india"),
+    ]);
 
-    const nseSymbols = NSE_REGISTRY.map(a => a.symbol);
-    const nsePriceMap = await getCurrentPrices(nseSymbols);
-    const prices = NSE_REGISTRY.map(a => ({
-      symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency,
-      ...(nsePriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
-    }));
-    const topGainers = [...prices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 10);
-    const topLosers = [...prices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 10);
+    const prices = NSE_REGISTRY.flatMap(a => (priceMap.has(a.symbol) ? [{
+      symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency, ...priceMap.get(a.symbol)!,
+    }] : []));
+    if (prices.length === 0) unavailable("NSE stocks");
 
-    const indices = INDICES.map(idx => idx.symbol);
-    const indicesPriceMap = await getCurrentPrices(indices);
-    const indicesData = INDICES.map(idx => ({ ...idx, ...(indicesPriceMap.get(idx.symbol) ?? generateCurrentPrice(idx.symbol)) }));
-
-    // FII/DII simulated activity
-    const seed = Math.floor(Date.now() / 3600000);
-    const fiiActivity = {
-      netBuy: Math.round((Math.sin(seed * 0.3) * 3000 + 500) * 100) / 100,
-      grossBuy: Math.round((8000 + Math.sin(seed * 0.2) * 2000) * 100) / 100,
-      grossSell: Math.round((7500 + Math.sin(seed * 0.25) * 2000) * 100) / 100,
-    };
-    const diiActivity = {
-      netBuy: Math.round((Math.sin(seed * 0.4) * 2000 + 800) * 100) / 100,
-      grossBuy: Math.round((6000 + Math.sin(seed * 0.35) * 1500) * 100) / 100,
-      grossSell: Math.round((5200 + Math.sin(seed * 0.45) * 1500) * 100) / 100,
-    };
+    const [sentimentResult, highLow] = await Promise.all([getMarketSentiment("india", priceMap), getHighLowCounts("india", priceMap)]);
+    const sentiment = sentimentResult!;
+    const { gainers, losers } = topMovers(prices, 10);
+    const indices = INDIA_INDICES.flatMap(idx => (priceMap.has(idx.symbol) ? [{ ...idx, ...priceMap.get(idx.symbol)! }] : []));
 
     return {
       sentiment,
       sectorPerformance: sectorData,
-      topGainers,
-      topLosers,
-      indices: indicesData,
-      fiiActivity,
-      diiActivity,
+      topGainers: gainers,
+      topLosers: losers,
+      indices,
+      // INR crore, as published by NSE for the latest trading day; null if NSE is unreachable.
+      fiiActivity: fiiDii?.fii ?? null,
+      diiActivity: fiiDii?.dii ?? null,
+      institutionalDate: fiiDii?.date ?? null,
       breadth: {
         advanceCount: sentiment.advanceCount,
         declineCount: sentiment.declineCount,
         unchangedCount: sentiment.unchangedCount,
         advanceDeclineRatio: sentiment.advanceDeclineRatio,
         breadthScore: sentiment.breadthScore,
+        nearHighs: highLow?.nearHighs ?? null,
+        nearLows: highLow?.nearLows ?? null,
       },
     };
   }),
 
-  // NSE sector heatmap — India sectors only
+  // NSE sector heatmap, India sectors only
   sectorHeatmap: publicProcedure.query(async () => {
     const sectorData = await getRealSectorPerformance(INDIA_SECTORS, "india");
     return sectorData.map(s => ({ sector: s.sector, change: s.priceChange1d, score: s.performanceScore, inflowOutflow: s.inflowOutflow }));
   }),
 
-  // Sector rotation — India sectors only
+  // Sector rotation, India sectors only
   sectorRotation: publicProcedure
-    .input(z.object({ timeframe: z.string().default("1d") }))
+    .input(z.object({ timeframe: z.string().max(8).default("1d") }))
     .query(async ({ input }) => {
       const sectorData = await getRealSectorPerformance(INDIA_SECTORS, "india");
       return sectorData.map((s, i) => ({ ...s, timeframe: input.timeframe, rank: i + 1 }));
     }),
 
-  // Sector detail — India sectors only
+  // Sector detail, India sectors only
   sectorDetail: publicProcedure
-    .input(z.object({ sector: z.string(), days: z.number().default(30) }))
+    .input(z.object({ sector: z.string().max(64), days: boundedDays(30) }))
     .query(async ({ input }) => {
       if (!INDIA_SECTORS.includes(input.sector)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid India sector" });
       }
-      const sectorPerf = await getRealSectorPerformance([input.sector], "india");
-      const current = sectorPerf[0] ?? { sector: input.sector, priceChange1d: 0, priceChange1w: 0, priceChange1m: 0, momentumScore: 50, strengthScore: 50, volumeScore: 50, breakoutFrequency: 0, inflowOutflow: 0, performanceScore: 50 };
-
-      // Get real stocks in this sector with prices
-      const sectorStocks = NSE_REGISTRY.filter(a => a.sector === input.sector);
-      const sectorSymbols = sectorStocks.map(a => a.symbol);
-      const sectorPriceMap = await getCurrentPrices(sectorSymbols);
-      const sectorAssetsWithPrices = sectorStocks.map(a => ({
-        symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency,
-        ...(sectorPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
-      }));
-
-      // History is still estimated (would need daily historical fetches for each stock)
-      const history = [];
-      for (let i = Math.min(input.days, 30); i >= 0; i--) {
-        const ts = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        history.push({
-          timestamp: ts,
-          performanceScore: current.performanceScore + (Math.random() - 0.5) * 5,
-          priceChange1d: current.priceChange1d + (Math.random() - 0.5) * 1,
-          inflowOutflow: current.inflowOutflow + (Math.random() - 0.5) * 100,
-        });
-      }
-      return { current, history, assets: sectorAssetsWithPrices };
+      const [sectorPerf, history, assets] = await Promise.all([
+        getRealSectorPerformance([input.sector], "india"),
+        getSectorDailyHistory("india", input.sector, input.days),
+        withPrices(NSE_REGISTRY.filter(a => a.sector === input.sector)),
+      ]);
+      const current = sectorPerf[0];
+      if (!current) unavailable(`the ${input.sector} sector`);
+      return { current, history, assets };
     }),
 
-  // NSE scanner — NSE stocks only (real data)
+  // NSE scanner, NSE stocks only
   scanner: publicProcedure
     .input(z.object({
       scanType: IMPROVED_SCAN_TYPES,
       scanTypes: IMPROVED_SCAN_TYPES_ARRAY,
-      timeframe: IMPROVED_TIMEFRAMES.default("1D"),
-      sector: z.string().optional(),
-      minQualityScore: z.number().default(30),
-      maxResults: z.number().default(20),
-      volumeMultiplier: z.number().default(2.0),
+      timeframe: SCAN_TIMEFRAMES.default("1D"),
+      sector: z.string().max(64).optional(),
+      minQualityScore: z.number().min(0).max(100).default(30),
+      maxResults: boundedLimit(20, 200),
+      volumeMultiplier: z.number().min(0).max(100).default(2.0),
     }))
     .query(async ({ input }) => {
       if (input.sector && !INDIA_SECTORS.includes(input.sector)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid India sector" });
       }
-      return runRealScanner({
+      const results = await runRealScanner({
         domain: "india",
         scanType: input.scanTypes ?? input.scanType,
         sector: input.sector,
         maxResults: input.maxResults,
       });
+      return results.filter(r => r.qualityScore >= input.minQualityScore);
     }),
 
-  // NSE pattern scanner — India patterns only
+  // NSE pattern scanner, India patterns only
   patterns: publicProcedure
-    .input(z.object({
-      timeframes: z.array(PATTERN_TIMEFRAMES).default(["1d"]),
-      minConfidence: z.number().default(50),
-      requireVolumeConfirmation: z.boolean().default(false),
-      filterFalseBreakouts: z.boolean().default(true),
-      sector: z.string().optional(),
-    }))
+    .input(z.object({ ...patternInput, sector: z.string().max(64).optional() }))
     .query(async ({ input }) => {
       const assets = input.sector
         ? NSE_REGISTRY.filter(a => a.sector.toLowerCase() === input.sector!.toLowerCase())
         : NSE_REGISTRY;
       return runRealPatternScanner(assets, {
-        timeframes: input.timeframes as any,
+        timeframes: input.timeframes,
         minConfidence: input.minConfidence,
         requireVolumeConfirmation: input.requireVolumeConfirmation,
         filterFalseBreakouts: input.filterFalseBreakouts,
@@ -348,64 +355,26 @@ const indiaRouter = router({
 
   // NSE stocks list
   stocks: publicProcedure
-    .input(z.object({ sector: z.string().optional() }))
+    .input(z.object({ sector: z.string().max(64).optional() }))
     .query(async ({ input }) => {
-      let list: Array<{ symbol: string; name: string; sector: string; exchange: string; currency: string }> = NSE_REGISTRY.map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
-      if (input.sector) list = list.filter(a => a.sector === input.sector);
-      const symbols = list.map(a => a.symbol);
-      const priceMap = await getCurrentPrices(symbols);
-      return list.map(a => ({ ...a, ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
+      const list = NSE_REGISTRY
+        .filter(a => !input.sector || a.sector === input.sector)
+        .map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
+      return withPrices(list);
     }),
 
   // Indian indices
-  indices: publicProcedure.query(async () => {
-    const symbols = INDICES.map(idx => idx.symbol);
-    const priceMap = await getCurrentPrices(symbols);
-    return INDICES.map(idx => ({ ...idx, ...(priceMap.get(idx.symbol) ?? generateCurrentPrice(idx.symbol)) }));
-  }),
+  indices: publicProcedure.query(async () => withPrices(INDIA_INDICES)),
 
-  // India sentiment history
+  // India sentiment history, rebuilt from real daily closes
   sentimentHistory: publicProcedure
-    .input(z.object({ days: z.number().default(90) }))
-    .query(async ({ input }) => {
-      const dbData = await getSentimentHistory(input.days);
-      if (dbData.length > 0) return dbData;
-      const history = [];
-      for (let i = input.days; i >= 0; i--) {
-        const ts = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const seed = Math.floor(ts.getTime() / 86400000);
-        const score = Math.sin(seed * 0.08) * 45 + Math.sin(seed * 0.03) * 20;
-        history.push({
-          timestamp: ts,
-          sentimentScore: Math.round(score * 100) / 100,
-          marketState: score > 20 ? "bullish" : score < -20 ? "bearish" : "neutral",
-          volatilityIndex: Math.round((15 + Math.abs(Math.sin(seed * 0.1)) * 12) * 100) / 100,
-          advanceDeclineRatio: Math.round((1 + score / 100) * 100) / 100,
-        });
-      }
-      return history;
-    }),
+    .input(z.object({ days: boundedDays(90) }))
+    .query(async ({ input }) => getIndiaSentimentHistory(input.days)),
 
-  // India sector rotation history
+  // India sector rotation history, rebuilt from real daily closes
   sectorRotationHistory: publicProcedure
-    .input(z.object({ days: z.number().default(30) }))
-    .query(async ({ input }) => {
-      const snapshots = await getHistoricalSnapshots("sector_rotation", input.days);
-      if (snapshots.length > 0) return snapshots;
-      const history = [];
-      for (let i = input.days; i >= 0; i--) {
-        const ts = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        history.push({
-          timestamp: ts,
-          data: INDIA_SECTORS.map(sector => ({
-            sector,
-            rank: Math.floor(Math.random() * INDIA_SECTORS.length) + 1,
-            score: Math.round((30 + Math.random() * 70) * 100) / 100,
-          })),
-        });
-      }
-      return history;
-    }),
+    .input(z.object({ days: boundedDays(30) }))
+    .query(async ({ input }) => getSectorRotationHistory("india", INDIA_SECTORS, input.days)),
 
   // India favorites
   favoriteSectors: protectedProcedure.query(async ({ ctx }) => {
@@ -413,7 +382,7 @@ const indiaRouter = router({
   }),
 
   toggleFavoriteSector: protectedProcedure
-    .input(z.object({ sector: z.string() }))
+    .input(z.object({ sector: z.string().max(64) }))
     .mutation(async ({ ctx, input }) => {
       const isFav = await toggleFavoriteSector(ctx.user.id, input.sector);
       return { isFavorite: isFav };
@@ -428,9 +397,9 @@ const indiaRouter = router({
     .input(z.object({
       name: z.string().min(1).max(100),
       config: z.object({
-        scanType: z.string(),
-        timeframe: z.string(),
-        sector: z.string().optional(),
+        scanType: z.string().max(64),
+        timeframe: z.string().max(8),
+        sector: z.string().max(64).optional(),
         minVolume: z.number().optional(),
       }),
     }))
@@ -449,112 +418,93 @@ const indiaRouter = router({
 
 // ─── Crypto Market Router ─────────────────────────────────────────────────────
 const cryptoRouter = router({
-  // Crypto dashboard — crypto assets only
+  // Crypto dashboard: crypto assets only
   dashboard: publicProcedure.query(async () => {
-    const seed = Math.floor(Date.now() / 3600000);
-    const btcQuote = await getCurrentPrice("BTC");
-    const ethQuote = await getCurrentPrice("ETH");
-    const btcPrice = btcQuote;
-    const ethPrice = ethQuote;
+    const [priceMap, fearGreed, global, exchanges] = await Promise.all([
+      getCurrentPrices(CRYPTO_REGISTRY.map(a => a.symbol)),
+      getFearGreedNow(),
+      getCryptoGlobal(),
+      getTopExchanges(10),
+    ]);
 
-    const cryptoSymbols = CRYPTO_REGISTRY.map(a => a.symbol);
-    const cryptoPriceMap = await getCurrentPrices(cryptoSymbols);
-    const cryptoPrices = CRYPTO_REGISTRY.map(a => ({
+    const cryptoPrices = CRYPTO_REGISTRY.flatMap(a => (priceMap.has(a.symbol) ? [{
       symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency, category: a.category,
-      ...(cryptoPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
-    }));
-    const topGainers = [...cryptoPrices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 10);
-    const topLosers = [...cryptoPrices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 10);
+      ...priceMap.get(a.symbol)!,
+    }] : []));
+    if (cryptoPrices.length === 0) unavailable("crypto assets");
 
-    const btcDominance = Math.round((44 + Math.sin(seed * 0.3) * 8) * 100) / 100;
-    const fearGreedIndex = Math.round((35 + Math.sin(seed * 0.5) * 25) * 100) / 100;
-    const fearGreedLabel = fearGreedIndex < 25 ? "Extreme Fear" : fearGreedIndex < 45 ? "Fear" : fearGreedIndex < 55 ? "Neutral" : fearGreedIndex < 75 ? "Greed" : "Extreme Greed";
+    const { gainers, losers } = topMovers(cryptoPrices, 10);
+    const btcPrice = priceMap.get("BTC") ?? null;
+    const ethPrice = priceMap.get("ETH") ?? null;
 
-    const totalMarketCap = Math.round((2.1 + Math.sin(seed * 0.2) * 0.3) * 1e12 * 100) / 100;
-    const totalVolume24h = Math.round((85 + Math.sin(seed * 0.4) * 20) * 1e9 * 100) / 100;
+    // Altcoin momentum: each coin's 24h move relative to Bitcoin's.
+    const altcoins = btcPrice
+      ? cryptoPrices
+          .filter(a => a.symbol !== "BTC")
+          .map(a => ({ ...a, relativeStrengthVsBTC: Math.round((a.changePercent - btcPrice.changePercent) * 100) / 100 }))
+          .sort((a, b) => b.relativeStrengthVsBTC - a.relativeStrengthVsBTC)
+      : [];
 
-    // Altcoin momentum — ETH, BNB, SOL, etc. vs BTC
-    const altcoins = CRYPTO_ASSETS.filter(a => a.symbol !== "BTC").map(a => {
-      const price = cryptoPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol);
-      const btcReturn = btcPrice.changePercent;
-      const altReturn = price.changePercent;
-      return {
-        ...a,
-        ...price,
-        relativeStrengthVsBTC: Math.round((altReturn - btcReturn) * 100) / 100,
-      };
-    }).sort((a, b) => b.relativeStrengthVsBTC - a.relativeStrengthVsBTC);
-
-    // Exchange activity simulation
-    const exchangeActivity = [
-      { exchange: "Binance", volume24h: Math.round((28 + Math.sin(seed * 0.3) * 5) * 1e9), dominance: 32 },
-      { exchange: "Coinbase", volume24h: Math.round((12 + Math.sin(seed * 0.4) * 3) * 1e9), dominance: 14 },
-      { exchange: "OKX", volume24h: Math.round((10 + Math.sin(seed * 0.5) * 2) * 1e9), dominance: 12 },
-      { exchange: "Bybit", volume24h: Math.round((8 + Math.sin(seed * 0.6) * 2) * 1e9), dominance: 9 },
-      { exchange: "Kraken", volume24h: Math.round((5 + Math.sin(seed * 0.7) * 1) * 1e9), dominance: 6 },
-    ];
+    // Exchange volume from CoinGecko (reported in BTC), converted at the live BTC price.
+    const totalExchangeBtc = exchanges.reduce((s, e) => s + e.volume24hBtc, 0);
+    const exchangeActivity = btcPrice
+      ? exchanges.slice(0, 5).map(e => ({
+          exchange: e.exchange,
+          volume24h: Math.round(e.volume24hBtc * btcPrice.price),
+          dominance: totalExchangeBtc > 0 ? Math.round((e.volume24hBtc / totalExchangeBtc) * 1000) / 10 : 0,
+        }))
+      : [];
 
     return {
       btcPrice,
       ethPrice,
-      btcDominance,
-      fearGreedIndex,
-      fearGreedLabel,
-      totalMarketCap,
-      totalVolume24h,
-      topGainers,
-      topLosers,
+      btcDominance: global?.btcDominance ?? null,
+      ethDominance: global?.ethDominance ?? null,
+      fearGreedIndex: fearGreed?.value ?? null,
+      fearGreedLabel: fearGreed?.label ?? null,
+      totalMarketCap: global?.totalMarketCapUsd ?? null,
+      totalVolume24h: global?.totalVolume24hUsd ?? null,
+      topGainers: gainers,
+      topLosers: losers,
       altcoinMomentum: altcoins,
       exchangeActivity,
     };
   }),
 
-  // Crypto heatmap — crypto only
+  // Crypto heatmap: crypto only
   heatmap: publicProcedure.query(async () => {
-    const symbols = CRYPTO_REGISTRY.map(a => a.symbol);
-    const priceMap = await getCurrentPrices(symbols);
-    return CRYPTO_REGISTRY.map(a => {
-      const price = priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol);
-      return {
-        symbol: a.symbol,
-        name: a.name,
-        change: price.changePercent,
-        price: price.price,
-        volume: price.volume,
-        category: a.category,
-      };
+    const priceMap = await getCurrentPrices(CRYPTO_REGISTRY.map(a => a.symbol));
+    return CRYPTO_REGISTRY.flatMap(a => {
+      const price = priceMap.get(a.symbol);
+      return price ? [{ symbol: a.symbol, name: a.name, change: price.changePercent, price: price.price, volume: price.volume, category: a.category }] : [];
     });
   }),
 
-  // Crypto scanner — crypto only (real data)
+  // Crypto scanner: crypto only
   scanner: publicProcedure
     .input(z.object({
       scanType: IMPROVED_SCAN_TYPES,
       scanTypes: IMPROVED_SCAN_TYPES_ARRAY,
-      timeframe: IMPROVED_TIMEFRAMES.default("1D"),
-      minQualityScore: z.number().default(30),
-      maxResults: z.number().default(20),
-      volumeMultiplier: z.number().default(2.0),
+      timeframe: SCAN_TIMEFRAMES.default("1D"),
+      minQualityScore: z.number().min(0).max(100).default(30),
+      maxResults: boundedLimit(20, 200),
+      volumeMultiplier: z.number().min(0).max(100).default(2.0),
     }))
     .query(async ({ input }) => {
-      return runRealScanner({
+      const results = await runRealScanner({
         domain: "crypto",
         scanType: input.scanTypes ?? input.scanType,
         maxResults: input.maxResults,
       });
+      return results.filter(r => r.qualityScore >= input.minQualityScore);
     }),
 
-  // Crypto pattern scanner — crypto patterns only
+  // Crypto pattern scanner: crypto patterns only
   patterns: publicProcedure
-    .input(z.object({
-      timeframes: z.array(PATTERN_TIMEFRAMES).default(["1d"]),
-      minConfidence: z.number().default(50),
-      requireVolumeConfirmation: z.boolean().default(false),
-      filterFalseBreakouts: z.boolean().default(true),
-    }))
+    .input(z.object(patternInput))
     .query(async ({ input }) => {
       return runRealPatternScanner(CRYPTO_REGISTRY, {
-        timeframes: input.timeframes as any,
+        timeframes: input.timeframes,
         minConfidence: input.minConfidence,
         requireVolumeConfirmation: input.requireVolumeConfirmation,
         filterFalseBreakouts: input.filterFalseBreakouts,
@@ -564,46 +514,14 @@ const cryptoRouter = router({
 
   // Crypto assets list
   assets: publicProcedure.query(async () => {
-    const symbols = CRYPTO_REGISTRY.map(a => a.symbol);
-    const priceMap = await getCurrentPrices(symbols);
-    return CRYPTO_REGISTRY.map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency, category: a.category, ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
+    const list = CRYPTO_REGISTRY.map(a => ({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency, category: a.category }));
+    return withPrices(list);
   }),
 
-  // BTC dominance history
-  btcDominanceHistory: publicProcedure
-    .input(z.object({ days: z.number().default(30) }))
-    .query(async ({ input }) => {
-      const history = [];
-      for (let i = input.days; i >= 0; i--) {
-        const ts = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const seed = Math.floor(ts.getTime() / 86400000);
-        history.push({
-          timestamp: ts,
-          btcDominance: Math.round((44 + Math.sin(seed * 0.05) * 8) * 100) / 100,
-          ethDominance: Math.round((18 + Math.sin(seed * 0.06) * 4) * 100) / 100,
-          altcoinDominance: Math.round((38 - Math.sin(seed * 0.04) * 6) * 100) / 100,
-        });
-      }
-      return history;
-    }),
-
-  // Fear & Greed history
+  // Fear & Greed history (Alternative.me). Empty when the source is unreachable.
   fearGreedHistory: publicProcedure
-    .input(z.object({ days: z.number().default(30) }))
-    .query(async ({ input }) => {
-      const history = [];
-      for (let i = input.days; i >= 0; i--) {
-        const ts = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const seed = Math.floor(ts.getTime() / 86400000);
-        const value = Math.round((35 + Math.sin(seed * 0.08) * 30 + Math.sin(seed * 0.03) * 15) * 100) / 100;
-        history.push({
-          timestamp: ts,
-          value: Math.max(0, Math.min(100, value)),
-          label: value < 25 ? "Extreme Fear" : value < 45 ? "Fear" : value < 55 ? "Neutral" : value < 75 ? "Greed" : "Extreme Greed",
-        });
-      }
-      return history;
-    }),
+    .input(z.object({ days: boundedDays(30) }))
+    .query(async ({ input }) => (await getFearGreedHistory(input.days)).slice(-(input.days + 1))),
 
   // Crypto saved scans
   savedScans: protectedProcedure.query(async ({ ctx }) => {
@@ -613,7 +531,7 @@ const cryptoRouter = router({
   saveScan: protectedProcedure
     .input(z.object({
       name: z.string().min(1).max(100),
-      config: z.object({ scanType: z.string(), timeframe: z.string(), minVolume: z.number().optional() }),
+      config: z.object({ scanType: z.string().max(64), timeframe: z.string().max(8), minVolume: z.number().optional() }),
     }))
     .mutation(async ({ ctx, input }) => {
       await createSavedScan(ctx.user.id, input.name, input.config);
@@ -630,33 +548,23 @@ const cryptoRouter = router({
 
 // ─── US Market Router ─────────────────────────────────────────────────────────
 const usRouter = router({
-  // US dashboard — US stocks and indices only
+  // US dashboard: US stocks and indices only
   dashboard: publicProcedure.query(async () => {
-    const seed = Math.floor(Date.now() / 3600000);
-    const allUsSymbols = [...US_INDICES.map(i => i.symbol), ...US_STOCKS.map(s => s.symbol)];
-    const usPriceMap = await getCurrentPrices(allUsSymbols);
-    const indices = US_INDICES.map(idx => ({ ...idx, ...(usPriceMap.get(idx.symbol) ?? generateCurrentPrice(idx.symbol)) }));
-    const prices = US_STOCKS.map(a => ({ ...a, ...(usPriceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
-    const topGainers = [...prices].sort((a, b) => b.changePercent - a.changePercent).slice(0, 10);
-    const topLosers = [...prices].sort((a, b) => a.changePercent - b.changePercent).slice(0, 10);
+    const priceMap = await getCurrentPrices([...US_DASHBOARD_INDICES.map(i => i.symbol), ...US_REGISTRY.map(s => s.symbol)]);
+    const indices = US_DASHBOARD_INDICES.flatMap(idx => (priceMap.has(idx.symbol) ? [{ ...idx, ...priceMap.get(idx.symbol)! }] : []));
+    const prices = US_REGISTRY.flatMap(a => (priceMap.has(a.symbol) ? [{ ...a, ...priceMap.get(a.symbol)! }] : []));
+    if (prices.length === 0) unavailable("US stocks");
 
+    const { gainers, losers } = topMovers(prices, 10);
     const sectorData = await getRealSectorPerformance(US_SECTORS, "us");
-
-    const marketSentiment = {
-      sentimentScore: Math.round((Math.sin(seed * 0.4) * 30 + 15) * 100) / 100,
-      marketState: "bullish" as const,
-      advanceCount: Math.floor(280 + Math.sin(seed * 0.3) * 80),
-      declineCount: Math.floor(180 + Math.sin(seed * 0.4) * 60),
-      breadthScore: Math.round((55 + Math.sin(seed * 0.5) * 20) * 100) / 100,
-    };
+    const marketSentiment = (await getMarketSentiment("us", priceMap))!;
 
     return {
       indices,
-      topGainers,
-      topLosers,
+      topGainers: gainers,
+      topLosers: losers,
       sectorHeatmap: sectorData,
       marketSentiment,
-      isLive: false, // US module is future-ready
     };
   }),
 
@@ -671,174 +579,123 @@ const usRouter = router({
     .input(z.object({
       scanType: SCAN_TYPES,
       scanTypes: SCAN_TYPES_ARRAY,
-      timeframe: z.string().default("1d"),
-      sector: z.string().optional(),
-      minVolumeRatio: z.number().default(2.0),
+      timeframe: z.string().max(8).default("1d"),
+      sector: z.string().max(64).optional(),
+      minVolumeRatio: z.number().min(0).max(100).default(2.0),
     }))
     .query(async ({ input }) => {
-      return runRealScanner({
-        domain: "us",
-        scanType: input.scanTypes ?? input.scanType,
-        sector: input.sector,
-        maxResults: 15,
-      });
+      // "breakout_ath" is the legacy name for "ath_breakout".
+      const normalize = (s: string) => (s === "breakout_ath" ? "ath_breakout" : s);
+      const types = (input.scanTypes ?? [input.scanType]).map(normalize).filter(s => s !== "consolidation_breakout");
+      if (types.length === 0) return [];
+      return runRealScanner({ domain: "us", scanType: types, sector: input.sector, maxResults: 15 });
     }),
 
   // US stocks list
   stocks: publicProcedure
-    .input(z.object({ sector: z.string().optional() }))
-    .query(async ({ input }) => {
-      let list = [...US_STOCKS];
-      if (input.sector) list = list.filter(a => a.sector === input.sector);
-      const symbols = list.map(a => a.symbol);
-      const priceMap = await getCurrentPrices(symbols);
-      return list.map(a => ({ ...a, ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
-    }),
+    .input(z.object({ sector: z.string().max(64).optional() }))
+    .query(async ({ input }) => withPrices(US_REGISTRY.filter(a => !input.sector || a.sector === input.sector))),
 
   // US indices
-  indices: publicProcedure.query(async () => {
-    const symbols = US_INDICES.map(idx => idx.symbol);
-    const priceMap = await getCurrentPrices(symbols);
-    return US_INDICES.map(idx => ({ ...idx, ...(priceMap.get(idx.symbol) ?? generateCurrentPrice(idx.symbol)) }));
-  }),
+  indices: publicProcedure.query(async () => withPrices(US_DASHBOARD_INDICES)),
 });
 
 // ─── Commodities Router ───────────────────────────────────────────────────────
-import { COMMODITY_REGISTRY } from "./assetRegistry";
-
 const commoditiesRouter = router({
   // List all commodities with live prices
   list: publicProcedure.query(async () => {
-    const symbols = COMMODITY_REGISTRY.map(a => a.symbol);
-    const priceMap = await getCurrentPrices(symbols);
-    return COMMODITY_REGISTRY.map(a => ({
-      symbol: a.symbol, name: a.name, category: a.category, sector: a.sector, unit: a.unit,
-      ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)),
-    }));
+    const list = COMMODITY_REGISTRY.map(a => ({ symbol: a.symbol, name: a.name, category: a.category, sector: a.sector, unit: a.unit }));
+    return withPrices(list);
   }),
 
   // Get single commodity detail with history
   detail: publicProcedure
-    .input(z.object({ symbol: z.string() }))
+    .input(z.object({ symbol: symbolInput }))
     .query(async ({ input }) => {
       const commodity = COMMODITY_REGISTRY.find(a => a.symbol === input.symbol);
       if (!commodity) return null;
-      const price = await getCurrentPrice(input.symbol);
-      const candles = await getHistoricalCandles(input.symbol, 365);
+      const [price, candles] = await Promise.all([getCurrentPrice(input.symbol), getHistoricalCandles(input.symbol, 365)]);
+      if (!price) unavailable(commodity.name);
       return { ...commodity, ...price, candles };
     }),
 });
 
 // ─── Unified Asset Router (for asset detail/chart, cross-domain search) ───────
+function refsForMarket(market: Market | "all"): AssetRef[] {
+  return market === "all" ? ALL_REFS : ALL_REFS.filter(r => r.market === market);
+}
+
+const publicRef = ({ symbol, name, sector, exchange, currency }: AssetRef) => ({ symbol, name, sector, exchange, currency });
+
 const assetsRouter = router({
   search: publicProcedure
-    .input(z.object({ query: z.string().min(1), market: z.enum(["india", "crypto", "us", "all"]).default("all") }))
+    .input(z.object({ query: z.string().trim().min(1).max(64), market: z.enum(["india", "crypto", "us", "all"]).default("all") }))
     .query(async ({ input }) => {
       const q = input.query.toLowerCase();
-      let all: Array<{ symbol: string; name: string; sector?: string; exchange?: string; currency?: string }> = [];
-      if (input.market === "india" || input.market === "all") all = [...all, ...NSE_STOCKS, ...INDICES];
-      if (input.market === "crypto" || input.market === "all") all = [...all, ...CRYPTO_ASSETS];
-      if (input.market === "us" || input.market === "all") all = [...all, ...US_STOCKS, ...US_INDICES];
-
-      // Also include full registries for complete coverage
-      if (input.market === "india" || input.market === "all") {
-        const registrySymbols = new Set(all.map(a => a.symbol));
-        NSE_REGISTRY.filter(a => !registrySymbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
-      }
-      if (input.market === "crypto" || input.market === "all") {
-        const registrySymbols = new Set(all.map(a => a.symbol));
-        CRYPTO_REGISTRY.filter(a => !registrySymbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
-      }
-      if (input.market === "us" || input.market === "all") {
-        const registrySymbols = new Set(all.map(a => a.symbol));
-        US_REGISTRY.filter(a => !registrySymbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
-      }
-
-      const filtered = all.filter(a =>
-        a.symbol.toLowerCase().includes(q) || a.name.toLowerCase().includes(q) || (a.sector && a.sector.toLowerCase().includes(q))
-      ).slice(0, 30);
-      const symbols = filtered.map(a => a.symbol);
-      const priceMap = await getCurrentPrices(symbols);
-      return filtered.map(a => ({ ...a, ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
+      const matches = refsForMarket(input.market)
+        .filter(a => a.symbol.toLowerCase().includes(q) || a.name.toLowerCase().includes(q) || a.sector.toLowerCase().includes(q))
+        .slice(0, 30)
+        .map(publicRef);
+      return withPrices(matches);
     }),
 
-  // List all assets (no search required)
+  // List assets (no search required)
   list: publicProcedure
-    .input(z.object({ market: z.enum(["india", "crypto", "us", "all"]).default("all"), sector: z.string().optional() }))
+    .input(z.object({ market: z.enum(["india", "crypto", "us", "all"]).default("all"), sector: z.string().max(64).optional() }))
     .query(async ({ input }) => {
-      let all: Array<{ symbol: string; name: string; sector?: string; exchange?: string; currency?: string }> = [];
-      if (input.market === "india" || input.market === "all") {
-        all = [...all, ...NSE_STOCKS, ...INDICES];
-        const symbols = new Set(all.map(a => a.symbol));
-        NSE_REGISTRY.filter(a => !symbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
-      }
-      if (input.market === "crypto" || input.market === "all") {
-        const symbols = new Set(all.map(a => a.symbol));
-        CRYPTO_REGISTRY.filter(a => !symbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
-        all = [...all, ...CRYPTO_ASSETS.filter(a => !all.some(x => x.symbol === a.symbol))];
-      }
-      if (input.market === "us" || input.market === "all") {
-        const symbols = new Set(all.map(a => a.symbol));
-        US_REGISTRY.filter(a => !symbols.has(a.symbol)).forEach(a => all.push({ symbol: a.symbol, name: a.name, sector: a.sector, exchange: a.exchange, currency: a.currency }));
-        all = [...all, ...US_STOCKS.filter(a => !all.some(x => x.symbol === a.symbol)), ...US_INDICES.filter(a => !all.some(x => x.symbol === a.symbol))];
-      }
-
-      if (input.sector && input.sector !== "All") {
-        all = all.filter(a => a.sector === input.sector);
-      }
-
-      const sliced = all.slice(0, 50);
-      const symbols = sliced.map(a => a.symbol);
-      const priceMap = await getCurrentPrices(symbols);
-      return sliced.map(a => ({ ...a, ...(priceMap.get(a.symbol) ?? generateCurrentPrice(a.symbol)) }));
+      let refs = refsForMarket(input.market);
+      if (input.sector && input.sector !== "All") refs = refs.filter(a => a.sector === input.sector);
+      return withPrices(refs.slice(0, 50).map(publicRef));
     }),
 
   detail: publicProcedure
-    .input(z.object({ symbol: z.string() }))
+    .input(z.object({ symbol: symbolInput }))
     .query(async ({ input }) => {
-      const all = [...NSE_STOCKS, ...CRYPTO_ASSETS, ...INDICES, ...US_STOCKS, ...US_INDICES];
-      let asset: { symbol: string; name: string; sector?: string; exchange?: string; currency?: string } | undefined = all.find(a => a.symbol === input.symbol);
+      const ref = REF_BY_SYMBOL.get(input.symbol);
+      if (!ref) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
 
-      // Also check full registries if not found in the basic lists
-      if (!asset) {
-        const regAsset = NSE_REGISTRY.find(a => a.symbol === input.symbol)
-          || CRYPTO_REGISTRY.find(a => a.symbol === input.symbol)
-          || US_REGISTRY.find(a => a.symbol === input.symbol);
-        if (regAsset) {
-          asset = { symbol: regAsset.symbol, name: regAsset.name, sector: regAsset.sector, exchange: regAsset.exchange, currency: regAsset.currency };
-        }
-      }
-      if (!asset) throw new TRPCError({ code: "NOT_FOUND", message: "Asset not found" });
-
-      // Get real historical data + indicators
-      const detailData = await getAssetDetailData(input.symbol);
-
-      // Determine market domain
-      const market = CRYPTO_REGISTRY.some(a => a.symbol === input.symbol) ? "crypto"
-        : US_REGISTRY.some(a => a.symbol === input.symbol) ? "us"
-        : "india";
+      const detail = await getAssetDetailData(input.symbol);
+      if (!detail) unavailable(ref.name);
 
       return {
-        ...asset,
-        market,
-        ...detailData.currentPrice,
-        candles: detailData.candles,
-        emaData: detailData.emaData,
-        indicators: detailData.indicators,
+        ...publicRef(ref),
+        market: ref.market,
+        ...detail.currentPrice,
+        candles: detail.candles,
+        emaData: detail.emaData,
+        indicators: detail.indicators,
       };
     }),
 
+  /** Last ~20 daily closes per symbol for inline sparklines. Symbols without data are omitted. */
+  sparklines: publicProcedure
+    .input(z.object({ symbols: z.array(symbolInput).min(1).max(40) }))
+    .query(async ({ input }) => {
+      const symbols = [...new Set(input.symbols)].filter(s => REF_BY_SYMBOL.has(s));
+      const out: Record<string, number[]> = {};
+      await mapLimit(symbols, 6, async symbol => {
+        const candles = await getHistoricalCandles(symbol, 20);
+        if (candles.length >= 5) out[symbol] = candles.map(c => c.close);
+      });
+      return out;
+    }),
+
   ohlcv: publicProcedure
-    .input(z.object({ symbol: z.string(), timeframe: z.string().default("1d"), limit: z.number().default(90) }))
-    .query(async ({ input }) => getHistoricalCandles(input.symbol, input.limit)),
+    .input(z.object({ symbol: symbolInput, timeframe: z.string().max(8).default("1d"), limit: boundedLimit(90, 1000) }))
+    .query(async ({ input }) => {
+      requireKnownSymbol(input.symbol);
+      return getHistoricalCandles(input.symbol, input.limit);
+    }),
 
   compare: publicProcedure
-    .input(z.object({ symbols: z.array(z.string()).min(2).max(5) }))
+    .input(z.object({ symbols: z.array(symbolInput).min(2).max(5) }))
     .query(async ({ input }) => {
+      input.symbols.forEach(requireKnownSymbol);
       const results = [];
       for (const symbol of input.symbols) {
         const candles = await getHistoricalCandles(symbol, 30);
-        const firstClose = candles[0]?.close ?? 1;
+        if (candles.length === 0) continue;
+        const firstClose = candles[0].close;
         results.push({
           symbol,
           data: candles.map(c => ({
@@ -862,13 +719,12 @@ const watchlistsRouter = router({
     .query(async ({ ctx, input }) => {
       const wl = await getWatchlistWithItems(input.id, ctx.user.id);
       if (!wl) throw new TRPCError({ code: "NOT_FOUND", message: "Watchlist not found" });
-      const itemSymbols = wl.items.map(item => item.asset.symbol);
-      const itemPriceMap = await getCurrentPrices(itemSymbols);
+      const priceMap = await getCurrentPrices(wl.items.map(item => item.asset.symbol));
       const enrichedItems = wl.items.map(item => ({
         ...item,
-        price: itemPriceMap.get(item.asset.symbol) ?? generateCurrentPrice(item.asset.symbol),
-        market: CRYPTO_ASSETS.some(a => a.symbol === item.asset.symbol) ? "crypto"
-          : US_STOCKS.some(a => a.symbol === item.asset.symbol) ? "us" : "india",
+        // null when Yahoo has no quote; the UI shows a dash instead of an invented price
+        price: priceMap.get(item.asset.symbol) ?? null,
+        market: marketOf(item.asset.symbol),
       }));
       return { ...wl, items: enrichedItems };
     }),
@@ -876,7 +732,7 @@ const watchlistsRouter = router({
   create: protectedProcedure
     .input(z.object({
       name: z.string().min(1).max(100),
-      description: z.string().optional(),
+      description: z.string().max(500).optional(),
       market: z.enum(["india", "crypto", "us", "all"]).default("all"),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -892,12 +748,11 @@ const watchlistsRouter = router({
     }),
 
   addItem: protectedProcedure
-    .input(z.object({ watchlistId: z.number(), symbol: z.string() }))
+    .input(z.object({ watchlistId: z.number(), symbol: symbolInput }))
     .mutation(async ({ ctx, input }) => {
       let asset = await getAssetBySymbol(input.symbol);
       if (!asset) {
-        const allAssets = [...NSE_STOCKS, ...CRYPTO_ASSETS, ...INDICES, ...US_STOCKS, ...US_INDICES];
-        const found = allAssets.find(a => a.symbol === input.symbol);
+        const found = REF_BY_SYMBOL.get(input.symbol);
         if (!found) throw new TRPCError({ code: "NOT_FOUND", message: `Asset '${input.symbol}' not found` });
         const db = await getDb();
         if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
@@ -905,13 +760,10 @@ const watchlistsRouter = router({
         await db.insert(assetsTable).values({
           symbol: found.symbol,
           name: found.name,
-          assetType: (found as any).exchange === "CRYPTO" ? "crypto"
-            : (found as any).exchange === "INDEX" ? "index"
-            : (found as any).exchange === "NASDAQ" || (found as any).exchange === "NYSE" ? "stock"
-            : "stock",
+          assetType: found.kind === "crypto" ? "crypto" : found.kind === "index" ? "index" : "stock",
           sector: found.sector ?? null,
-          exchange: (found as any).exchange ?? null,
-          currency: (found as any).currency ?? "INR",
+          exchange: found.exchange ?? null,
+          currency: found.currency ?? "INR",
           isActive: true,
         }).onDuplicateKeyUpdate({ set: { isActive: true } });
         asset = await getAssetBySymbol(input.symbol);
@@ -939,7 +791,7 @@ const alertsRouter = router({
   }),
 
   history: protectedProcedure
-    .input(z.object({ limit: z.number().default(50) }))
+    .input(z.object({ limit: boundedLimit(50) }))
     .query(async ({ ctx, input }) => getAlertHistory(ctx.user.id, input.limit)),
 
   create: protectedProcedure
@@ -952,8 +804,8 @@ const alertsRouter = router({
         direction: z.enum(["above", "below", "cross"]).optional(),
         ema1: z.number().optional(),
         ema2: z.number().optional(),
-        sector: z.string().optional(),
-        timeframe: z.string().optional(),
+        sector: z.string().max(64).optional(),
+        timeframe: z.string().max(8).optional(),
       }).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -984,72 +836,34 @@ const alertsRouter = router({
 // ─── Historical Router ────────────────────────────────────────────────────────
 const historicalRouter = router({
   indiaSectorRotation: publicProcedure
-    .input(z.object({ days: z.number().default(30) }))
-    .query(async ({ input }) => {
-      const snapshots = await getHistoricalSnapshots("sector_rotation", input.days);
-      if (snapshots.length > 0) return snapshots;
-      const history = [];
-      for (let i = input.days; i >= 0; i--) {
-        const ts = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        history.push({
-          timestamp: ts,
-          data: INDIA_SECTORS.map(sector => ({
-            sector,
-            rank: Math.floor(Math.random() * INDIA_SECTORS.length) + 1,
-            score: Math.round((30 + Math.random() * 70) * 100) / 100,
-          })),
-        });
-      }
-      return history;
-    }),
+    .input(z.object({ days: boundedDays(30) }))
+    .query(async ({ input }) => getSectorRotationHistory("india", INDIA_SECTORS, input.days)),
 
   indiaSentiment: publicProcedure
-    .input(z.object({ days: z.number().default(90) }))
-    .query(async ({ input }) => {
-      const dbData = await getSentimentHistory(input.days);
-      if (dbData.length > 0) return dbData;
-      const history = [];
-      for (let i = input.days; i >= 0; i--) {
-        const ts = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const seed = Math.floor(ts.getTime() / 86400000);
-        const score = Math.sin(seed * 0.08) * 45 + Math.sin(seed * 0.03) * 20;
-        history.push({
-          timestamp: ts,
-          sentimentScore: Math.round(score * 100) / 100,
-          marketState: score > 20 ? "bullish" : score < -20 ? "bearish" : "neutral",
-          volatilityIndex: Math.round((15 + Math.abs(Math.sin(seed * 0.1)) * 12) * 100) / 100,
-        });
-      }
-      return history;
-    }),
+    .input(z.object({ days: boundedDays(90) }))
+    .query(async ({ input }) => getIndiaSentimentHistory(input.days)),
 
   cryptoSentiment: publicProcedure
-    .input(z.object({ days: z.number().default(30) }))
+    .input(z.object({ days: boundedDays(30) }))
     .query(async ({ input }) => {
-      const history = [];
-      for (let i = input.days; i >= 0; i--) {
-        const ts = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const seed = Math.floor(ts.getTime() / 86400000);
-        const fg = Math.max(0, Math.min(100, 35 + Math.sin(seed * 0.08) * 30 + Math.sin(seed * 0.03) * 15));
-        const btcDom = Math.round((44 + Math.sin(seed * 0.05) * 8) * 100) / 100;
-        history.push({
-          timestamp: ts,
-          fearGreedIndex: Math.round(fg * 100) / 100,
-          btcDominance: btcDom,
-          label: fg < 25 ? "Extreme Fear" : fg < 45 ? "Fear" : fg < 55 ? "Neutral" : fg < 75 ? "Greed" : "Extreme Greed",
-        });
-      }
-      return history;
+      const history = await getFearGreedHistory(input.days);
+      return history.slice(-(input.days + 1)).map(p => ({
+        timestamp: p.timestamp,
+        fearGreedIndex: p.value,
+        label: fearGreedLabel(p.value),
+      }));
     }),
 
   performance: publicProcedure
-    .input(z.object({ symbols: z.array(z.string()), days: z.number().default(30) }))
+    .input(z.object({ symbols: z.array(symbolInput).max(10), days: boundedDays(30) }))
     .query(async ({ input }) => {
+      input.symbols.forEach(requireKnownSymbol);
       const results = [];
       for (const symbol of input.symbols) {
         const candles = await getHistoricalCandles(symbol, input.days);
-        const firstClose = candles[0]?.close ?? 1;
-        const lastClose = candles[candles.length - 1]?.close ?? firstClose;
+        if (candles.length === 0) continue;
+        const firstClose = candles[0].close;
+        const lastClose = candles[candles.length - 1].close;
         results.push({
           symbol,
           totalReturn: Math.round(((lastClose - firstClose) / firstClose) * 10000) / 100,
@@ -1062,10 +876,15 @@ const historicalRouter = router({
       return results;
     }),
 
+  // Scanner results stored by the scheduled job. Only rows written from live
+  // Yahoo data are returned (rows from earlier simulated runs are ignored).
   scannerResults: publicProcedure
-    .input(z.object({ scanType: z.string().default("ema_alignment"), days: z.number().default(7) }))
+    .input(z.object({ scanType: z.string().max(64).default("ema_alignment"), days: boundedDays(7) }))
     .query(async ({ input }) => {
-      return getRecentScanResults(input.scanType, "1d", 100);
+      const rows = await getRecentScanResults(input.scanType, "1D", 300, input.days);
+      return rows
+        .filter(r => (r.result.details as { source?: string } | null)?.source === "yahoo")
+        .slice(0, 100);
     }),
 });
 

@@ -153,7 +153,7 @@ This document tracks all functional and non-functional requirements for PulseFlo
 | 8.5 | India Top Gainers/Losers (NSE stocks only) | ✅ | Filtered to NSE |
 | 8.6 | India Sector Rotation (NSE sectors only) | ✅ | 11 India sectors |
 | 8.7 | NSE Market Scanner (stocks only) | ✅ | Improved accuracy engine |
-| 8.8 | FII/DII Activity widget | ✅ | Simulated institutional flows |
+| 8.8 | FII/DII Activity widget | ✅ | Real NSE-published FII/DII figures (INR crore); hidden when NSE is unreachable |
 | 8.9 | India Market Breadth | ✅ | Advance/decline |
 | 8.10 | Indian Indices panel | ✅ | NIFTY50, BANKNIFTY, etc. |
 | 8.11 | Crypto Market Dashboard (crypto-only) | ✅ | `/crypto` |
@@ -164,7 +164,7 @@ This document tracks all functional and non-functional requirements for PulseFlo
 | 8.16 | Exchange Activity widget | ✅ | Binance, Coinbase, etc. |
 | 8.17 | Fear & Greed Index (crypto-specific) | ✅ | With history |
 | 8.18 | US Market Dashboard shell | ✅ | `/us` future-ready |
-| 8.19 | US Indices panel (S&P 500, NASDAQ, DOW) | ✅ | Live simulated data |
+| 8.19 | US Indices panel (S&P 500, NASDAQ, DOW) | ✅ | Live Yahoo Finance data |
 | 8.20 | US Sector Heatmaps | ✅ | 6 US sectors |
 | 8.21 | Backend router isolation (india.*, crypto.*, us.*, global.*) | ✅ | Strict domain separation |
 | 8.22 | No asset class mixing in heatmaps/scanners/gainers | ✅ | Validated |
@@ -260,7 +260,7 @@ This document tracks all functional and non-functional requirements for PulseFlo
 | 14.3 | Sentiment update handler (every 30 min) | ✅ | `/api/scheduled/sentiment-update` |
 | 14.4 | Scanner processing handler (every hour) | ✅ | `/api/scheduled/scanner-processing` |
 | 14.5 | Alert evaluation handler (every 15 min) | ✅ | `/api/scheduled/alert-evaluation` |
-| 14.6 | Cron authentication via SDK | ✅ | `authenticateCron()` |
+| 14.6 | Cron authentication via `x-api-key` | ✅ | `authenticateCron()`, timing-safe, disabled in production without `CRON_API_KEY` |
 
 ---
 
@@ -283,7 +283,7 @@ This document tracks all functional and non-functional requirements for PulseFlo
 
 | # | Requirement | Status | Notes |
 |---|-------------|:------:|-------|
-| 16.1 | Real market data API integration | ❌ | Replace simulation with live feeds |
+| 16.1 | Real market data API integration | ✅ | Yahoo Finance, Alternative.me, CoinGecko, NSE; simulation removed |
 | 16.2 | Email alert delivery via SMTP | ❌ | Backend ready, delivery not wired |
 | 16.3 | Push notifications for mobile | ❌ | — |
 | 16.4 | Portfolio P&L tracking | ❌ | — |
@@ -296,12 +296,12 @@ This document tracks all functional and non-functional requirements for PulseFlo
 
 ## Architecture Decisions
 
-1. **Simulation-first approach** — All market data is generated algorithmically. This allows the full app to run without external API keys or rate limits. The simulation engine is designed to be swappable with real data sources.
+1. **Real data only** — All market data comes from free public sources (Yahoo Finance, Alternative.me, CoinGecko, NSE). Nothing is generated or simulated. When a source has no data, the item is omitted or the widget says it is unavailable.
 
 2. **Strict market domain isolation** — India, Crypto, and US markets are completely separated in the backend routers, asset registries, and frontend pages. No cross-contamination between markets in any scanner, heatmap, or gainers/losers list.
 
 3. **Quality-over-quantity scanning** — The improved scanner engine uses multi-factor quality scoring rather than simple threshold matching. This reduces false positives significantly.
 
-4. **Graceful degradation** — If the database is unavailable, the app still works using in-memory simulation data. All DB operations check for null and return empty results gracefully.
+4. **Graceful degradation** — If the database is unavailable, the app still works from live data. All DB operations check for null and return empty results gracefully.
 
 5. **Type safety end-to-end** — tRPC ensures that frontend and backend share the same types without manual synchronization. Changes to a procedure's return type are immediately reflected in the UI code.

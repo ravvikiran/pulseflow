@@ -26,11 +26,8 @@ const SCAN_TYPES = [
 ];
 
 const TIMEFRAMES = [
+  // The scanner runs on daily candles from Yahoo Finance.
   { value: "1D", label: "1D" },
-  { value: "4H", label: "4H" },
-  { value: "1H", label: "1H" },
-  { value: "15M", label: "15M" },
-  { value: "1W", label: "1W" },
 ];
 
 function fmt(n: number | null | undefined, d = 2) {
@@ -359,7 +356,7 @@ export default function CryptoScanner() {
               {savedScans.map((scan: any) => (
                 <div key={scan.id} className="flex items-center justify-between group">
                   <button className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate"
-                    onClick={() => { setSelectedTypes([scan.config?.scanType ?? "ema_alignment"]); setTimeframe(scan.config?.timeframe ?? "1D"); }}>
+                    onClick={() => { setSelectedTypes([scan.config?.scanType ?? "ema_alignment"]); setTimeframe("1D"); }}>
                     {scan.name}
                   </button>
                   <button aria-label={`Delete saved scan ${scan.name}`}

@@ -2,10 +2,13 @@
   "name": "PulseFlow - Market Intelligence",
   "short_name": "PulseFlow",
   "description": "Real-time market intelligence across Indian equities, crypto, and US markets",
+  "id": "/",
+  "scope": "/",
+  "lang": "en",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0d0e14",
-  "theme_color": "#3b82f6",
+  "theme_color": "#0d0e14",
   "orientation": "any",
   "categories": ["finance", "productivity"],
   "icons": [
@@ -22,7 +25,6 @@
       "purpose": "any maskable"
     }
   ],
-  "screenshots": [],
   "shortcuts": [
     {
       "name": "India Dashboard",

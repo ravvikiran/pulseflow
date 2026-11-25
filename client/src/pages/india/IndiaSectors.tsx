@@ -59,7 +59,7 @@ function SectorRow({ sector, rank, timeframe }: {
             {isPositive ? "+" : ""}{change.toFixed(2)}%
           </div>
           <div className="text-3xs text-muted-foreground">
-            {sector.inflowOutflow >= 0 ? "↑" : "↓"} {Math.abs(sector.inflowOutflow / 1000).toFixed(1)}B
+            {sector.inflowOutflow >= 0 ? "↑" : "↓"} ₹{Math.abs(sector.inflowOutflow).toLocaleString("en-IN", { maximumFractionDigits: 0 })} Cr
           </div>
         </div>
         <span className={cn("score-badge text-2xs w-8",
@@ -96,7 +96,7 @@ export default function IndiaSectors() {
     { metric: "Momentum", value: sectorDetail.current.momentumScore },
     { metric: "Strength", value: sectorDetail.current.strengthScore },
     { metric: "Volume", value: sectorDetail.current.volumeScore },
-    { metric: "Breakout", value: sectorDetail.current.breakoutFrequency * 10 },
+    { metric: "Near 52W High", value: sectorDetail.current.breakoutFrequency },
     { metric: "Performance", value: sectorDetail.current.performanceScore },
   ] : [];
 

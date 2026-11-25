@@ -187,7 +187,6 @@ export default function CryptoDashboard() {
     refetchInterval: 60000,
   });
   const { data: fearGreedHistory } = trpc.crypto.fearGreedHistory.useQuery({ days: 30 });
-  const { data: btcDomHistory } = trpc.crypto.btcDominanceHistory.useQuery({ days: 30 });
 
   const fearGreedChartData = useMemo(() => {
     if (!fearGreedHistory) return [];
@@ -197,15 +196,7 @@ export default function CryptoDashboard() {
     }));
   }, [fearGreedHistory]);
 
-  const btcDomChartData = useMemo(() => {
-    if (!btcDomHistory) return [];
-    return (btcDomHistory as any[]).slice(-30).map((d: any) => ({
-      date: new Date(d.timestamp).toLocaleDateString("en", { month: "short", day: "numeric" }),
-      btc: Math.round(Number(d.btcDominance) * 10) / 10,
-      eth: Math.round(Number(d.ethDominance) * 10) / 10,
-      alt: Math.round(Number(d.altcoinDominance) * 10) / 10,
-    }));
-  }, [btcDomHistory]);
+
 
   const displayList = tab === "gainers" ? (data?.topGainers ?? [])
     : tab === "losers" ? (data?.topLosers ?? [])
@@ -258,15 +249,15 @@ export default function CryptoDashboard() {
         </div>
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard label="BTC Dominance" value={`${fmt(data?.btcDominance, 1)}%`} flashValue={Number(data?.btcDominance)}
+          <StatCard label="BTC Dominance" value={data?.btcDominance != null ? `${fmt(data.btcDominance, 1)}%` : "—"} flashValue={Number(data?.btcDominance)}
             sub="Bitcoin market share" icon={Percent} trend="neutral" accent="var(--color-bull)" />
           <StatCard label="Total Market Cap" value={fmtLarge(data?.totalMarketCap)} flashValue={Number(data?.totalMarketCap)}
             sub="All crypto assets" icon={Globe} trend="neutral" />
           <StatCard label="24h Volume" value={fmtLarge(data?.totalVolume24h)} flashValue={Number(data?.totalVolume24h)}
             sub="Across all exchanges" icon={Activity} trend="neutral" />
-          <StatCard label="Fear & Greed Index" value={`${Math.round(Number(data?.fearGreedIndex ?? 50))}`} flashValue={Number(data?.fearGreedIndex)}
-            sub={data?.fearGreedLabel ?? "Neutral"} icon={Zap}
-            trend={Number(data?.fearGreedIndex ?? 50) > 70 ? "down" : Number(data?.fearGreedIndex ?? 50) < 30 ? "up" : "neutral"} />
+          <StatCard label="Fear & Greed Index" value={data?.fearGreedIndex != null ? `${Math.round(data.fearGreedIndex)}` : "—"} flashValue={Number(data?.fearGreedIndex)}
+            sub={data?.fearGreedLabel ?? "Unavailable"} icon={Zap}
+            trend={data?.fearGreedIndex == null ? "neutral" : data.fearGreedIndex > 70 ? "down" : data.fearGreedIndex < 30 ? "up" : "neutral"} />
         </div>
       )}
 
@@ -280,17 +271,19 @@ export default function CryptoDashboard() {
           </div>
           {isLoading ? (
             <div className="flex justify-center py-8"><Skeleton className="w-36 h-24 rounded" /></div>
+          ) : data?.fearGreedIndex != null ? (
+            <FearGreedGauge value={data.fearGreedIndex} label={data.fearGreedLabel ?? ""} />
           ) : (
-            <FearGreedGauge value={Number(data?.fearGreedIndex ?? 50)} label={data?.fearGreedLabel ?? "Neutral"} />
+            <div className="py-8 text-center text-xs text-muted-foreground">Fear & Greed data is currently unavailable.</div>
           )}
           <div className="mt-3 grid grid-cols-2 gap-2 text-center">
             <div className="rounded bg-bull/10 py-1.5">
               <div className="text-2xs text-muted-foreground">BTC Price</div>
-              <div className="text-sm font-bold text-bull tabular-nums">${fmt(data?.btcPrice?.price)}</div>
+              <div className="text-sm font-bold text-bull tabular-nums">{data?.btcPrice ? `$${fmt(data.btcPrice.price)}` : "—"}</div>
             </div>
             <div className="rounded bg-primary/10 py-1.5">
               <div className="text-2xs text-muted-foreground">ETH Price</div>
-              <div className="text-sm font-bold text-primary tabular-nums">${fmt(data?.ethPrice?.price)}</div>
+              <div className="text-sm font-bold text-primary tabular-nums">{data?.ethPrice ? `$${fmt(data.ethPrice.price)}` : "—"}</div>
             </div>
           </div>
         </div>
@@ -300,14 +293,17 @@ export default function CryptoDashboard() {
           <h3 className="text-sm font-semibold text-foreground mb-3">BTC Dominance</h3>
           {isLoading ? (
             <Skeleton className="w-28 h-28 rounded-full mx-auto" />
+          ) : data?.btcDominance != null && data?.ethDominance != null ? (
+            <DominanceRing btc={data.btcDominance} eth={data.ethDominance} />
           ) : (
-            <DominanceRing btc={Number(data?.btcDominance ?? 44)} eth={18} />
+            <div className="py-8 text-center text-xs text-muted-foreground">Dominance data is currently unavailable.</div>
           )}
+          {data?.btcDominance != null && data?.ethDominance != null && (
           <div className="mt-4 space-y-2">
             {[
-              { label: "Bitcoin (BTC)", pct: data?.btcDominance ?? 44, color: "var(--color-bull)" },
-              { label: "Ethereum (ETH)", pct: 18, color: "var(--color-primary)" },
-              { label: "Altcoins", pct: 100 - Number(data?.btcDominance ?? 44) - 18, color: "oklch(0.55 0.12 280)" },
+              { label: "Bitcoin (BTC)", pct: data.btcDominance, color: "var(--color-bull)" },
+              { label: "Ethereum (ETH)", pct: data.ethDominance, color: "var(--color-primary)" },
+              { label: "Altcoins", pct: Math.max(0, 100 - data.btcDominance - data.ethDominance), color: "oklch(0.55 0.12 280)" },
             ].map(({ label, pct, color }) => (
               <div key={label} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
@@ -318,24 +314,28 @@ export default function CryptoDashboard() {
               </div>
             ))}
           </div>
+          )}
         </div>
 
         {/* Exchange Activity */}
         <div className="pf-card p-4">
           <h3 className="text-sm font-semibold text-foreground mb-3">Exchange Activity</h3>
           <div className="space-y-2">
+            {(data?.exchangeActivity ?? []).length === 0 && !isLoading && (
+              <div className="py-4 text-center text-xs text-muted-foreground">Exchange volume data is currently unavailable.</div>
+            )}
             {(data?.exchangeActivity ?? []).map((ex: any) => (
               <div key={ex.exchange} className="flex items-center gap-2">
                 <div className="w-16 text-xs font-medium text-foreground truncate">{ex.exchange}</div>
                 <div className="flex-1 bg-muted rounded-full h-1.5 overflow-hidden">
-                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${ex.dominance * 3}%` }} />
+                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.min(100, ex.dominance)}%` }} />
                 </div>
                 <div className="text-2xs text-muted-foreground tabular-nums w-14 text-right">{fmtLarge(ex.volume24h)}</div>
               </div>
             ))}
           </div>
           <div className="mt-3 pt-3 border-t border-border/50">
-            <div className="text-2xs text-muted-foreground">Total 24h Exchange Volume</div>
+            <div className="text-2xs text-muted-foreground">Total 24h Crypto Market Volume</div>
             <div className="text-sm font-bold text-foreground tabular-nums mt-0.5">{fmtLarge(data?.totalVolume24h)}</div>
           </div>
         </div>
@@ -392,6 +392,9 @@ export default function CryptoDashboard() {
         {/* Fear & Greed History */}
         <div className="pf-card p-4">
           <h3 className="text-sm font-semibold text-foreground mb-3">Fear & Greed — 30 Day History</h3>
+          {fearGreedChartData.length === 0 ? (
+            <div className="h-[180px] flex items-center justify-center text-xs text-muted-foreground">History is currently unavailable.</div>
+          ) : (
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart data={fearGreedChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
@@ -407,30 +410,10 @@ export default function CryptoDashboard() {
               <Area type="monotone" dataKey="value" name="Fear & Greed" stroke="var(--color-primary)" fill="url(#fgGrad)" strokeWidth={2} dot={false} />
             </AreaChart>
           </ResponsiveContainer>
+          )}
         </div>
       </div>
 
-      {/* BTC Dominance History */}
-      <div className="pf-card p-4">
-        <h3 className="text-sm font-semibold text-foreground mb-3">BTC Dominance — 30 Day History</h3>
-        <ResponsiveContainer width="100%" height={160}>
-          <AreaChart data={btcDomChartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="btcGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--color-bull)" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="var(--color-bull)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-            <XAxis dataKey="date" tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} tickLine={false} interval={6} />
-            <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} tickLine={false} />
-            <RechartsTooltip content={<CustomTooltip />} />
-            <Area type="monotone" dataKey="btc" name="BTC" stroke="var(--color-bull)" fill="url(#btcGrad)" strokeWidth={2} dot={false} />
-            <Area type="monotone" dataKey="eth" name="ETH" stroke="var(--color-primary)" fill="none" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
-            <Area type="monotone" dataKey="alt" name="Alts" stroke="oklch(0.55 0.12 280)" fill="none" strokeWidth={1.5} dot={false} strokeDasharray="2 3" />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
     </div>
   );
 }

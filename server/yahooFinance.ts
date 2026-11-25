@@ -30,13 +30,12 @@ const INDEX_MAP: Record<string, string> = {
   NIFTYMETAL: "^CNXMETAL",
   NIFTYAUTO: "^CNXAUTO",
   NIFTYFMCG: "^CNXFMCG",
-  NIFTYMIDCAP: "NIFTY_MIDCAP_100.NS",
-  NIFTYSMALLCAP: "NIFTY_SMLCAP_100.NS",
   SPX: "^GSPC",
   NDX: "^NDX",
   DJI: "^DJI",
   RUT: "^RUT",
   VIX: "^VIX",
+  INDIAVIX: "^INDIAVIX",
 };
 
 const CRYPTO_MAP: Record<string, string> = {
@@ -49,15 +48,17 @@ const CRYPTO_MAP: Record<string, string> = {
   AVAX: "AVAX-USD",
   DOGE: "DOGE-USD",
   DOT: "DOT-USD",
-  MATIC: "MATIC-USD",
+  // Yahoo uses CoinMarketCap-ID suffixed tickers when a symbol is ambiguous.
+  // Plain "ARB-USD" is a different token; MATIC was rebranded to POL.
+  MATIC: "POL28321-USD",
   ATOM: "ATOM-USD",
   NEAR: "NEAR-USD",
-  APT: "APT-USD",
-  SUI: "SUI-USD",
-  ARB: "ARB-USD",
+  APT: "APT21794-USD",
+  SUI: "SUI20947-USD",
+  ARB: "ARB11841-USD",
   OP: "OP-USD",
-  IMX: "IMX-USD",
-  UNI: "UNI-USD",
+  IMX: "IMX10603-USD",
+  UNI: "UNI7083-USD",
   AAVE: "AAVE-USD",
   LINK: "LINK-USD",
   MKR: "MKR-USD",
@@ -67,7 +68,7 @@ const CRYPTO_MAP: Record<string, string> = {
   XLM: "XLM-USD",
   XMR: "XMR-USD",
   SHIB: "SHIB-USD",
-  PEPE: "PEPE-USD",
+  PEPE: "PEPE24478-USD",
   AXS: "AXS-USD",
   SAND: "SAND-USD",
 };
@@ -118,8 +119,75 @@ const quoteCache = new Map<string, CacheEntry<QuoteResult>>();
 const historyCache = new Map<string, CacheEntry<HistoryCandle[]>>();
 
 const QUOTE_CACHE_MS = 60 * 1000; // 1 minute for quotes
-const HISTORY_CACHE_MS = 5 * 60 * 1000; // 5 minutes for historical data
-const MAX_CACHE_SIZE = 500; // Maximum entries per cache
+const HISTORY_CACHE_MS = 30 * 60 * 1000; // daily candles barely change intraday; 30 minutes
+const MAX_CACHE_SIZE = 1500; // Maximum entries per cache
+
+// Upstream timeouts so a hung Yahoo request can't hang the API response.
+const QUOTE_TIMEOUT_MS = 10_000;
+const HISTORY_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Yahoo ${label} timed out after ${ms}ms`)), ms);
+    timer.unref();
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+// ─── Request limiter ──────────────────────────────────────────────────────────
+// Yahoo is free but throttles aggressive clients. All upstream calls share one
+// small pool so concurrent dashboards can't burst, and transient failures
+// (429, network) are retried with backoff. Speed is traded for reliability.
+const MAX_CONCURRENT = 4;
+const MIN_GAP_MS = 120;
+let active = 0;
+let lastStart = 0;
+const waiters: Array<() => void> = [];
+
+async function acquire(): Promise<void> {
+  if (active >= MAX_CONCURRENT) await new Promise<void>(resolve => waiters.push(resolve));
+  active++;
+  const wait = lastStart + MIN_GAP_MS - Date.now();
+  lastStart = Math.max(Date.now(), lastStart + MIN_GAP_MS);
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+}
+
+function release(): void {
+  active--;
+  waiters.shift()?.();
+}
+
+function isTransient(error: unknown): boolean {
+  const msg = String((error as Error)?.message ?? error).toLowerCase();
+  return /429|too many|timed out|timeout|econnreset|etimedout|enotfound|fetch failed|socket|5\d\d/.test(msg);
+}
+
+async function yahooCall<T>(fn: () => Promise<T>, ms: number, label: string, attempts = 3): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    await acquire();
+    try {
+      return await withTimeout(fn(), ms, label);
+    } catch (error) {
+      lastError = error;
+      if (!isTransient(error) || attempt === attempts) break;
+    } finally {
+      release();
+    }
+    await new Promise(r => setTimeout(r, 500 * 2 ** (attempt - 1)));
+  }
+  throw lastError;
+}
+
+// Log each distinct upstream problem once per 10 minutes instead of on every request.
+const warned = new Map<string, number>();
+function warnOnce(key: string, message: string): void {
+  const last = warned.get(key) ?? 0;
+  if (Date.now() - last < 10 * 60 * 1000) return;
+  warned.set(key, Date.now());
+  console.warn(message);
+}
 
 function getCached<T>(cache: Map<string, CacheEntry<T>>, key: string, maxAge: number): T | null {
   const entry = cache.get(key);
@@ -180,7 +248,7 @@ export async function getQuote(symbol: string): Promise<QuoteResult | null> {
   if (cached) return cached;
 
   try {
-    const quote = await yahooFinance.quote(yahooTicker);
+    const quote = await yahooCall(() => yahooFinance.quote(yahooTicker), QUOTE_TIMEOUT_MS, `quote ${yahooTicker}`);
 
     if (!quote || !quote.regularMarketPrice) return null;
 
@@ -201,7 +269,7 @@ export async function getQuote(symbol: string): Promise<QuoteResult | null> {
     setCache(quoteCache, symbol, result);
     return result;
   } catch (error) {
-    console.warn(`[Yahoo] Quote failed for ${symbol} (${yahooTicker}):`, (error as Error).message);
+    warnOnce(`quote:${symbol}`, `[Yahoo] Quote unavailable for ${symbol} (${yahooTicker}): ${(error as Error).message}`);
     return null;
   }
 }
@@ -230,17 +298,21 @@ export async function getQuotes(symbols: string[]): Promise<Map<string, QuoteRes
   for (let i = 0; i < uncached.length; i += batchSize) {
     const batch = uncached.slice(i, i + batchSize);
     const yahooTickers = batch.map(toYahooSymbol);
+    // Yahoo omits unknown/delisted tickers from the response, so results must
+    // be matched by ticker rather than by array index.
+    const tickerToSymbol = new Map(yahooTickers.map((t, idx) => [t.toUpperCase(), batch[idx]]));
 
     try {
-      const quotes = await yahooFinance.quote(yahooTickers);
+      const quotes = await yahooCall(() => yahooFinance.quote(yahooTickers), QUOTE_TIMEOUT_MS, "batch quote");
       const quotesArray = Array.isArray(quotes) ? quotes : [quotes];
 
-      for (let j = 0; j < batch.length; j++) {
-        const q = quotesArray[j];
-        if (!q || !q.regularMarketPrice) continue;
+      for (const q of quotesArray) {
+        if (!q || !q.regularMarketPrice || !q.symbol) continue;
+        const internalSymbol = tickerToSymbol.get(String(q.symbol).toUpperCase());
+        if (!internalSymbol) continue;
 
         const result: QuoteResult = {
-          symbol: batch[j],
+          symbol: internalSymbol,
           price: q.regularMarketPrice,
           change: q.regularMarketChange ?? 0,
           changePercent: q.regularMarketChangePercent ?? 0,
@@ -253,11 +325,11 @@ export async function getQuotes(symbols: string[]): Promise<Map<string, QuoteRes
           timestamp: Date.now(),
         };
 
-        setCache(quoteCache, batch[j], result);
-        results.set(batch[j], result);
+        setCache(quoteCache, internalSymbol, result);
+        results.set(internalSymbol, result);
       }
     } catch (error) {
-      console.warn(`[Yahoo] Batch quote failed:`, (error as Error).message);
+      warnOnce("batch-quote", `[Yahoo] Batch quote failed: ${(error as Error).message}`);
     }
 
     // Small delay between batches to avoid rate limiting
@@ -277,25 +349,57 @@ export async function getHistory(
   period: "1mo" | "3mo" | "6mo" | "1y" | "2y" = "1y",
   interval: "1d" | "1wk" | "1mo" = "1d"
 ): Promise<HistoryCandle[]> {
-  const cacheKey = `${symbol}:${period}:${interval}`;
+  // Daily requests for any window up to a year share ONE cached 1y series per symbol
+  // and are sliced locally, so a symbol costs a single upstream request, not one per period.
+  const sliceable = interval === "1d" && period !== "2y";
+  const fetchPeriod = sliceable ? "1y" : period;
+  const cacheKey = `${symbol}:${fetchPeriod}:${interval}`;
 
-  // Check cache
-  const cached = getCached(historyCache, cacheKey, HISTORY_CACHE_MS);
-  if (cached) return cached;
+  let candles = getCached(historyCache, cacheKey, HISTORY_CACHE_MS);
+  if (!candles) {
+    // A symbol that just failed is not retried for a few minutes (each attempt is slow with retries).
+    if (Date.now() - (historyFailedAt.get(cacheKey) ?? 0) < FAILURE_BACKOFF_MS) return [];
+    // De-duplicate concurrent requests for the same series (cache stampede guard)
+    let pending = historyInflight.get(cacheKey);
+    if (!pending) {
+      pending = fetchHistory(symbol, cacheKey, fetchPeriod, interval).finally(() => historyInflight.delete(cacheKey));
+      historyInflight.set(cacheKey, pending);
+    }
+    candles = await pending;
+  }
 
+  if (!sliceable || period === "1y") return candles;
+  const cutoff = getStartDate(period).getTime();
+  return candles.filter(c => new Date(c.timestamp).getTime() >= cutoff);
+}
+const historyInflight = new Map<string, Promise<HistoryCandle[]>>();
+const historyFailedAt = new Map<string, number>();
+const FAILURE_BACKOFF_MS = 3 * 60 * 1000;
+
+async function fetchHistory(
+  symbol: string,
+  cacheKey: string,
+  period: "1mo" | "3mo" | "6mo" | "1y" | "2y",
+  interval: "1d" | "1wk" | "1mo"
+): Promise<HistoryCandle[]> {
   const yahooTicker = toYahooSymbol(symbol);
 
   try {
-    const result = await yahooFinance.chart(yahooTicker, {
-      period1: getStartDate(period),
-      period2: new Date(),
-      interval,
-    });
+    const result = await yahooCall(
+      () =>
+        yahooFinance.chart(yahooTicker, {
+          period1: getStartDate(period),
+          period2: new Date(),
+          interval,
+        }),
+      HISTORY_TIMEOUT_MS,
+      `chart ${yahooTicker}`
+    );
 
     if (!result || !result.quotes || result.quotes.length === 0) return [];
 
     const candles: HistoryCandle[] = result.quotes
-      .filter((r: any) => r.open != null && r.close != null)
+      .filter((r: any) => r.open != null && r.close != null && r.high != null && r.low != null)
       .map((r: any) => ({
         timestamp: r.date.toISOString(),
         open: r.open!,
@@ -306,14 +410,46 @@ export async function getHistory(
       }));
 
     setCache(historyCache, cacheKey, candles);
+    historyFailedAt.delete(cacheKey);
     return candles;
   } catch (error) {
+    historyFailedAt.set(cacheKey, Date.now());
     // Only warn once per symbol to avoid console spam
     if (!historyFailedSet.has(symbol)) {
       addToFailedSet(symbol);
-      console.warn(`[Yahoo] History unavailable for ${symbol} (${yahooTicker})`);
+      warnOnce(`history:${symbol}`, `[Yahoo] History unavailable for ${symbol} (${yahooTicker}): ${(error as Error).message}`);
     }
     return [];
+  }
+}
+
+// ─── All-time high ────────────────────────────────────────────────────────────
+
+const athCache = new Map<string, { value: number | null; at: number }>();
+const ATH_CACHE_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Highest traded price over the full listed history, taken from monthly candles
+ * (cheap: one small request per symbol). Null when Yahoo has no history.
+ */
+export async function getAllTimeHigh(symbol: string): Promise<number | null> {
+  const hit = athCache.get(symbol);
+  if (hit && Date.now() - hit.at < ATH_CACHE_MS) return hit.value;
+
+  const yahooTicker = toYahooSymbol(symbol);
+  try {
+    const result = await yahooCall(
+      () => yahooFinance.chart(yahooTicker, { period1: new Date("1990-01-01"), period2: new Date(), interval: "1mo" }),
+      HISTORY_TIMEOUT_MS,
+      `ath ${yahooTicker}`
+    );
+    const highs = (result?.quotes ?? []).map((q: any) => q.high).filter((h: unknown): h is number => typeof h === "number");
+    const value = highs.length ? Math.max(...highs) : null;
+    athCache.set(symbol, { value, at: Date.now() });
+    return value;
+  } catch (error) {
+    warnOnce(`ath:${symbol}`, `[Yahoo] All-time high unavailable for ${symbol}: ${(error as Error).message}`);
+    return null;
   }
 }
 
@@ -321,7 +457,8 @@ const historyFailedSet = new Set<string>();
 const MAX_FAILED_SET_SIZE = 200;
 
 // Periodic cleanup of the failed set (every 30 min, allow retries)
-setInterval(() => { historyFailedSet.clear(); }, 30 * 60 * 1000);
+// unref() so this timer never keeps the process alive (clean shutdown, tests).
+setInterval(() => { historyFailedSet.clear(); }, 30 * 60 * 1000).unref();
 
 // Prevent unbounded growth of the failed set between cleanup cycles
 function addToFailedSet(symbol: string) {
@@ -344,10 +481,7 @@ function getStartDate(period: string): Date {
   }
 }
 
-/**
- * Get current price data formatted for PulseFlow's existing interface
- * (drop-in replacement for generateCurrentPrice)
- */
+/** Current price snapshot for one symbol, or null when Yahoo has no data. */
 export async function getRealPrice(symbol: string): Promise<{
   price: number; change: number; changePercent: number;
   volume: number; high: number; low: number; open: number;
@@ -366,9 +500,8 @@ export async function getRealPrice(symbol: string): Promise<{
 }
 
 /**
- * Get prices for multiple symbols, returning results in the same format
- * as the old generateCurrentPrice but with real data.
- * Falls back to simulated data for symbols that fail.
+ * Prices for multiple symbols. Symbols Yahoo has no data for are simply
+ * absent from the returned map; callers must not invent values for them.
  */
 export async function getRealPrices(symbols: string[]): Promise<Map<string, {
   price: number; change: number; changePercent: number;

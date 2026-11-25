@@ -21,6 +21,18 @@ export async function getDb() {
   return _db;
 }
 
+/** Close the underlying mysql2 pool (used during graceful shutdown). */
+export async function closeDb(): Promise<void> {
+  if (!_db) return;
+  try {
+    await _db.$client.end();
+  } catch (error) {
+    console.warn("[Database] Error while closing pool:", error);
+  } finally {
+    _db = null;
+  }
+}
+
 // ─── Users ────────────────────────────────────────────────────────────────────
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
@@ -207,8 +219,8 @@ export async function getSentimentHistory(days = 30) {
 export async function insertSentiment(data: {
   sentimentScore: number; marketState: "bullish" | "bearish" | "neutral";
   advanceCount: number; declineCount: number; unchangedCount: number;
-  advanceDeclineRatio: number; breadthScore: number; volatilityIndex: number;
-  btcDominance: number; totalMarketCap: number; fearGreedIndex: number;
+  advanceDeclineRatio: number; breadthScore: number; volatilityIndex?: number | null;
+  btcDominance?: number | null; totalMarketCap?: number | null; fearGreedIndex?: number | null;
 }) {
   const db = await getDb();
   if (!db) return;
@@ -366,10 +378,10 @@ export async function markAlertsRead(userId: number) {
 }
 
 // ─── Scanner Results ──────────────────────────────────────────────────────────
-export async function getRecentScanResults(scanType: string, timeframe: string, limit = 50) {
+export async function getRecentScanResults(scanType: string, timeframe: string, limit = 50, days = 1) {
   const db = await getDb();
   if (!db) return [];
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   return db.select({ result: scannerResults, asset: assets })
     .from(scannerResults)
     .innerJoin(assets, eq(scannerResults.assetId, assets.id))

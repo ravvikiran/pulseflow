@@ -8,7 +8,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AssetTable } from "@/components/shared/AssetTable";
-import { Sparkline, generateSparklineData } from "@/components/Sparkline";
 import { CountUp } from "@/components/AnimatedNumber";
 import { motion } from "framer-motion";
 
@@ -20,7 +19,7 @@ interface MarketDomainCardProps {
   icon: React.ReactNode;
   accentClass: string;
   borderClass: string;
-  sentiment?: { sentimentScore?: number; marketState?: string; fearGreedIndex?: number; spxChange?: number };
+  sentiment?: { sentimentScore?: number; marketState?: string; fearGreedIndex?: number; spxChange?: number | null } | null;
   topGainers?: Array<{ symbol: string; changePercent: number; price: number; currency?: string }>;
   topLosers?: Array<{ symbol: string; changePercent: number; price: number; currency?: string }>;
   isLoading?: boolean;
@@ -64,6 +63,8 @@ function MarketDomainCard({
         {/* Sentiment bar */}
         {isLoading ? (
           <Skeleton className="h-6 w-full mt-2" />
+        ) : !sentiment ? (
+          <div className="mt-2 text-2xs text-muted-foreground">Sentiment unavailable right now.</div>
         ) : (
           <div className="mt-2">
             <div className="flex items-center justify-between mb-1">
@@ -89,7 +90,7 @@ function MarketDomainCard({
                 Fear & Greed: <span className="text-foreground font-medium">{sentiment.fearGreedIndex.toFixed(0)}/100</span>
               </div>
             )}
-            {title === "US Market" && sentiment?.spxChange !== undefined && (
+            {title === "US Market" && sentiment?.spxChange != null && (
               <div className={cn("text-2xs mt-1 font-medium", sentiment.spxChange >= 0 ? "text-bull" : "text-bear")}>
                 S&P 500: {sentiment.spxChange >= 0 ? "+" : ""}{sentiment.spxChange.toFixed(2)}%
               </div>
@@ -112,7 +113,6 @@ function MarketDomainCard({
                 <div key={a.symbol} className="flex items-center justify-between">
                   <span className="text-2xs font-medium text-foreground">{a.symbol}</span>
                   <div className="flex items-center gap-1.5">
-                    <Sparkline data={generateSparklineData(12, "up")} width={36} height={14} color="bull" strokeWidth={1} showArea={false} />
                     <span className="text-2xs font-semibold text-bull tabular-nums">+{a.changePercent.toFixed(2)}%</span>
                   </div>
                 </div>
@@ -132,7 +132,6 @@ function MarketDomainCard({
                 <div key={a.symbol} className="flex items-center justify-between">
                   <span className="text-2xs font-medium text-foreground">{a.symbol}</span>
                   <div className="flex items-center gap-1.5">
-                    <Sparkline data={generateSparklineData(12, "down")} width={36} height={14} color="bear" strokeWidth={1} showArea={false} />
                     <span className="text-2xs font-semibold text-bear tabular-nums">{a.changePercent.toFixed(2)}%</span>
                   </div>
                 </div>
@@ -260,7 +259,7 @@ export default function HomeDashboard() {
           topGainers={overview?.us.topGainers}
           topLosers={overview?.us.topLosers}
           isLoading={isLoading}
-          badge="Preview"
+          badge="US Live"
           badgeClass="bg-primary/10 text-primary"
         />
       </div>
@@ -339,9 +338,9 @@ export default function HomeDashboard() {
       <div className="pf-card p-4 flex items-center gap-3 border-l-2 border-l-primary">
         <AlertCircle className="w-4 h-4 text-primary shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium text-foreground">Data is rule-based simulation</div>
+          <div className="text-xs font-medium text-foreground">Live market data</div>
           <div className="text-2xs text-muted-foreground">
-            All prices, sector scores, and indicators are generated using deterministic market logic for demonstration purposes.
+            Prices and history come from Yahoo Finance (stocks are about 15 minutes delayed). Sentiment, sector scores and alerts are calculated from that data.
           </div>
         </div>
         <Link href="/alerts">

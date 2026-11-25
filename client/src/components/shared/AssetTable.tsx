@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
-import { Sparkline, generateSparklineData } from "@/components/Sparkline";
+import { Sparkline } from "@/components/Sparkline";
+import { trpc } from "@/lib/trpc";
 
 export interface AssetRow {
   symbol: string;
@@ -50,6 +51,13 @@ export function AssetTable({
   showVolume = false, showSparkline = false, linkPrefix = "/assets", emptyMessage = "No assets found",
   compact = false, className
 }: AssetTableProps) {
+  // Real trend lines: the last ~20 daily closes from the server (cached upstream).
+  const sparkSymbols = showSparkline ? assets.slice(0, 40).map(a => a.symbol) : [];
+  const { data: sparklines } = trpc.assets.sparklines.useQuery(
+    { symbols: sparkSymbols },
+    { enabled: sparkSymbols.length > 0, staleTime: 5 * 60_000 }
+  );
+
   if (assets.length === 0) {
     return (
       <div className={cn("pf-card p-6 text-center text-muted-foreground text-sm", className)}>
@@ -126,14 +134,18 @@ export function AssetTable({
                   {showSparkline && (
                     <td className="px-3 py-2 hidden sm:table-cell">
                       <div className="flex justify-end">
-                        <Sparkline
-                          data={generateSparklineData(16, isPositive ? "up" : "down")}
-                          width={60}
-                          height={20}
-                          color={isPositive ? "bull" : "bear"}
-                          strokeWidth={1.25}
-                          showArea={false}
-                        />
+                        {sparklines?.[asset.symbol] ? (
+                          <Sparkline
+                            data={sparklines[asset.symbol]}
+                            width={60}
+                            height={20}
+                            color={isPositive ? "bull" : "bear"}
+                            strokeWidth={1.25}
+                            showArea={false}
+                          />
+                        ) : (
+                          <span className="text-2xs text-muted-foreground">—</span>
+                        )}
                       </div>
                     </td>
                   )}

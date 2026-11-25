@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
 import {
-  generateCurrentPrice,
-  generateMarketData,
-  generateMarketSentiment,
-  generateSectorPerformance,
-  runScanner,
   calculateEMA,
   calculateRSI,
   calculateMomentumScore,
@@ -12,128 +7,102 @@ import {
   detectVolumeSpike,
   detect52wHighBreakout,
   detectATHBreakout,
-  SECTORS,
-  NSE_STOCKS,
-} from "./marketEngine";
-import { CRYPTO_REGISTRY } from "./assetRegistry";
+} from "./indicators";
+import { sentimentFromChanges, stateFromScore } from "./marketAnalytics";
+import { sessionProgress, mapLimit } from "./dataProvider";
+import { CRYPTO_REGISTRY, NSE_REGISTRY, US_REGISTRY, INDEX_REGISTRY, runDataValidation } from "./assetRegistry";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 import type { User } from "../drizzle/schema";
 
-// ─── Market Engine Tests ──────────────────────────────────────────────────────
+// ─── Pure analytics (no network) ──────────────────────────────────────────────
 
-describe("generateCurrentPrice", () => {
-  it("returns a valid price snapshot for NSE stocks", () => {
-    const result = generateCurrentPrice("TCS");
-    expect(result.price).toBeGreaterThan(0);
-    expect(result.high).toBeGreaterThanOrEqual(result.price);
-    expect(result.low).toBeLessThanOrEqual(result.price);
-    expect(result.volume).toBeGreaterThan(0);
-    expect(typeof result.changePercent).toBe("number");
+describe("sentimentFromChanges", () => {
+  it("is +100 when every mover advances and -100 when every mover declines", () => {
+    expect(sentimentFromChanges([1, 2, 3]).sentimentScore).toBe(100);
+    expect(sentimentFromChanges([-1, -2]).sentimentScore).toBe(-100);
   });
 
-  it("returns a valid price snapshot for crypto", () => {
-    const result = generateCurrentPrice("BTC");
-    expect(result.price).toBeGreaterThan(0);
-    expect(result.high).toBeGreaterThanOrEqual(result.low);
+  it("counts advancers, decliners and unchanged using a 0.1% flat band", () => {
+    const s = sentimentFromChanges([1, 0.05, -0.05, -2, 3]);
+    expect(s.advanceCount).toBe(2);
+    expect(s.declineCount).toBe(1);
+    expect(s.unchangedCount).toBe(2);
+    expect(s.advanceDeclineRatio).toBe(2);
+    expect(s.breadthScore).toBe(67);
   });
 
-  it("returns deterministic results for the same symbol within the same minute", () => {
-    const r1 = generateCurrentPrice("RELIANCE");
-    const r2 = generateCurrentPrice("RELIANCE");
-    expect(r1.price).toBe(r2.price);
+  it("returns a neutral score for no movers", () => {
+    const s = sentimentFromChanges([0, 0.01]);
+    expect(s.sentimentScore).toBe(0);
+    expect(s.marketState).toBe("neutral");
+  });
+
+  it("maps scores to market states", () => {
+    expect(stateFromScore(40)).toBe("bullish");
+    expect(stateFromScore(-40)).toBe("bearish");
+    expect(stateFromScore(5)).toBe("neutral");
   });
 });
 
-describe("generateMarketData", () => {
-  it("returns 91 candles for 90 days", () => {
-    const candles = generateMarketData("INFY", 90);
-    expect(candles.length).toBe(91);
+describe("sessionProgress", () => {
+  it("treats India as closed on weekends", () => {
+    const saturday = new Date("2026-03-07T08:00:00Z");
+    expect(sessionProgress("india", saturday)).toEqual({ fraction: 1, open: false });
   });
 
-  it("each candle has valid OHLCV structure", () => {
-    const candles = generateMarketData("HDFCBANK", 10);
-    for (const c of candles) {
-      expect(c.open).toBeGreaterThan(0);
-      expect(c.high).toBeGreaterThanOrEqual(c.open);
-      expect(c.high).toBeGreaterThanOrEqual(c.close);
-      expect(c.low).toBeLessThanOrEqual(c.open);
-      expect(c.low).toBeLessThanOrEqual(c.close);
-      expect(c.volume).toBeGreaterThan(0);
-      expect(c.timestamp).toBeInstanceOf(Date);
+  it("reports partial progress during the NSE session (Mon 11:00 IST = 05:30 UTC)", () => {
+    const { fraction, open } = sessionProgress("india", new Date("2026-03-09T05:30:00Z"));
+    expect(open).toBe(true);
+    expect(fraction).toBeGreaterThan(0.2);
+    expect(fraction).toBeLessThan(0.6);
+  });
+
+  it("is closed for the US after 16:00 New York time", () => {
+    // Mon 22:00 UTC = 17:00/18:00 New York depending on DST
+    expect(sessionProgress("us", new Date("2026-03-09T22:00:00Z")).open).toBe(false);
+  });
+
+  it("crypto is always open", () => {
+    expect(sessionProgress("crypto", new Date("2026-03-07T12:00:00Z")).open).toBe(true);
+  });
+});
+
+describe("mapLimit", () => {
+  it("preserves order and never exceeds the concurrency limit", async () => {
+    let active = 0;
+    let peak = 0;
+    const out = await mapLimit([1, 2, 3, 4, 5, 6], 2, async n => {
+      active++;
+      peak = Math.max(peak, active);
+      await new Promise(r => setTimeout(r, 5));
+      active--;
+      return n * 2;
+    });
+    expect(out).toEqual([2, 4, 6, 8, 10, 12]);
+    expect(peak).toBeLessThanOrEqual(2);
+  });
+});
+
+describe("asset registry", () => {
+  it("has no duplicates or cross-market contamination", () => {
+    const v = runDataValidation();
+    expect(v.duplicates).toEqual([]);
+    expect(v.crossContamination).toEqual([]);
+    expect(v.status).toBe("CLEAN");
+  });
+
+  it("no longer lists tickers Yahoo has no data for", () => {
+    const all = [...NSE_REGISTRY, ...CRYPTO_REGISTRY, ...US_REGISTRY, ...INDEX_REGISTRY].map(a => a.symbol);
+    for (const dead of ["ICICIPRULI", "NIFTYMIDCAP", "NIFTYSMALLCAP"]) expect(all).not.toContain(dead);
+  });
+
+  it("does not carry hard-coded prices", () => {
+    for (const a of [...NSE_REGISTRY, ...CRYPTO_REGISTRY, ...US_REGISTRY]) {
+      expect("basePrice" in a).toBe(false);
     }
   });
 });
-
-describe("generateMarketSentiment", () => {
-  it("returns valid sentiment data", () => {
-    const s = generateMarketSentiment();
-    expect(["bullish", "bearish", "neutral"]).toContain(s.marketState);
-    expect(s.btcDominance).toBeGreaterThan(0);
-    expect(s.btcDominance).toBeLessThan(100);
-    expect(s.fearGreedIndex).toBeGreaterThanOrEqual(0);
-    expect(s.fearGreedIndex).toBeLessThanOrEqual(100);
-    expect(s.advanceDeclineRatio).toBeGreaterThan(0);
-    expect(s.volatilityIndex).toBeGreaterThan(0);
-  });
-
-  it("advance/decline ratio matches counts", () => {
-    const s = generateMarketSentiment();
-    const expectedRatio = s.advanceCount / Math.max(1, s.declineCount);
-    expect(Math.abs(s.advanceDeclineRatio - expectedRatio)).toBeLessThan(0.01);
-  });
-});
-
-describe("generateSectorPerformance", () => {
-  it("returns valid performance data for an India sector", () => {
-    const perf = generateSectorPerformance("Information Technology");
-    expect(perf.sector).toBe("Information Technology");
-    expect(perf.momentumScore).toBeGreaterThanOrEqual(0);
-    expect(perf.momentumScore).toBeLessThanOrEqual(100);
-    expect(perf.strengthScore).toBeGreaterThanOrEqual(0);
-    expect(perf.performanceScore).toBeGreaterThanOrEqual(0);
-    expect(typeof perf.priceChange1d).toBe("number");
-    expect(typeof perf.inflowOutflow).toBe("number");
-  });
-
-  it("returns deterministic results for same sector in same hour", () => {
-    const p1 = generateSectorPerformance("Banking & Finance");
-    const p2 = generateSectorPerformance("Banking & Finance");
-    expect(p1.performanceScore).toBe(p2.performanceScore);
-  });
-});
-
-describe("runScanner", () => {
-  it("returns array of results for ema_alignment", () => {
-    const results = runScanner(NSE_STOCKS, "ema_alignment", "1d", {});
-    expect(Array.isArray(results)).toBe(true);
-  });
-
-  it("returns array of results for volume_spike", () => {
-    const results = runScanner(NSE_STOCKS, "volume_spike", "1d", { minVolumeRatio: 2.0 });
-    expect(Array.isArray(results)).toBe(true);
-  });
-
-  it("filters by sector correctly", () => {
-    const results = runScanner(NSE_STOCKS, "ema_alignment", "1d", { sector: "Information Technology" });
-    // All results must be from the filtered sector (sector comes from asset lookup in router, not runScanner itself)
-    // runScanner filters by sector before pushing, so all returned symbols must belong to IT sector
-    const itSymbols = NSE_STOCKS.filter(a => a.sector === "Information Technology").map(a => a.symbol);
-    for (const r of results) {
-      expect(itSymbols).toContain(r.symbol);
-    }
-  });
-
-  it("each result has score and symbol", () => {
-    const results = runScanner(NSE_STOCKS, "ema_alignment", "1d", {});
-    for (const r of results.slice(0, 5)) {
-      expect(r.symbol).toBeTruthy();
-      expect(r.score).toBeGreaterThanOrEqual(0);
-      expect(r.score).toBeLessThanOrEqual(100);
-    }
-  });
-});
-
 describe("calculateEMA", () => {
   it("returns an array of the same length as input", () => {
     const data = Array.from({ length: 50 }, (_, i) => 100 + i);
@@ -277,7 +246,9 @@ describe("india router", () => {
     expect(result.topGainers.length).toBeGreaterThan(0);
     expect(result.topLosers.length).toBeGreaterThan(0);
     expect(result.sectorPerformance.length).toBeGreaterThan(0);
-    expect(result.breadth.advanceCount).toBeGreaterThan(0);
+    expect(result.breadth.advanceCount + result.breadth.declineCount + result.breadth.unchangedCount).toBeGreaterThan(0);
+    // FII/DII come from NSE and are null when NSE is unreachable; never invented.
+    if (result.fiiActivity) expect(Number.isFinite(result.fiiActivity.netBuy)).toBe(true);
   });
 
   it("india.sectorHeatmap returns India sectors only", async () => {
@@ -364,10 +335,15 @@ describe("crypto router", () => {
   it("crypto.dashboard returns BTC dominance, fear/greed, and crypto assets", async () => {
     const caller = appRouter.createCaller(createPublicContext());
     const result = await caller.crypto.dashboard();
-    expect(result.btcDominance).toBeGreaterThan(0);
-    expect(result.btcDominance).toBeLessThan(100);
-    expect(result.fearGreedIndex).toBeGreaterThanOrEqual(0);
-    expect(result.fearGreedIndex).toBeLessThanOrEqual(100);
+    // External sources can be down; values are then null rather than made up.
+    if (result.btcDominance !== null) {
+      expect(result.btcDominance).toBeGreaterThan(0);
+      expect(result.btcDominance).toBeLessThan(100);
+    }
+    if (result.fearGreedIndex !== null) {
+      expect(result.fearGreedIndex).toBeGreaterThanOrEqual(0);
+      expect(result.fearGreedIndex).toBeLessThanOrEqual(100);
+    }
     expect(result.topGainers.length).toBeGreaterThan(0);
     expect(result.topLosers.length).toBeGreaterThan(0);
   });
@@ -401,20 +377,11 @@ describe("crypto router", () => {
     }
   });
 
-  it("crypto.btcDominanceHistory returns 30-day history", async () => {
-    const caller = appRouter.createCaller(createPublicContext());
-    const result = await caller.crypto.btcDominanceHistory({ days: 30 });
-    expect(result.length).toBe(31);
-    for (const d of result) {
-      expect(d.btcDominance).toBeGreaterThan(0);
-      expect(d.btcDominance).toBeLessThan(100);
-    }
-  });
-
   it("crypto.fearGreedHistory returns labeled history", async () => {
     const caller = appRouter.createCaller(createPublicContext());
     const result = await caller.crypto.fearGreedHistory({ days: 7 });
-    expect(result.length).toBe(8);
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.length).toBeLessThanOrEqual(8);
     for (const d of result) {
       expect(d.value).toBeGreaterThanOrEqual(0);
       expect(d.value).toBeLessThanOrEqual(100);
@@ -486,6 +453,25 @@ describe("assets router", () => {
     }
   });
 
+  it("assets.ohlcv, compare and performance reject symbols outside the registry", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    await expect(caller.assets.ohlcv({ symbol: "NOTAREALTICKER", limit: 30 })).rejects.toThrow();
+    await expect(caller.assets.compare({ symbols: ["TCS", "NOTAREALTICKER"] })).rejects.toThrow();
+    await expect(caller.historical.performance({ symbols: ["NOTAREALTICKER"], days: 7 })).rejects.toThrow();
+  });
+
+  it("assets.sparklines returns real closes for known symbols only", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    const result = await caller.assets.sparklines({ symbols: ["TCS", "NOTAREALTICKER"] });
+    expect(result["NOTAREALTICKER"]).toBeUndefined();
+    if (result["TCS"]) {
+      expect(result["TCS"].length).toBeGreaterThanOrEqual(5);
+      expect(result["TCS"].every(v => v > 0)).toBe(true);
+    }
+  });
+
+
+
   it("assets.detail throws for unknown symbol", async () => {
     const caller = appRouter.createCaller(createPublicContext());
     await expect(caller.assets.detail({ symbol: "UNKNOWN_XYZ" })).rejects.toThrow();
@@ -554,6 +540,18 @@ describe("global router", () => {
     expect(result.crypto.topGainers.length).toBeGreaterThan(0);
     expect(result.us.topGainers.length).toBeGreaterThan(0);
   });
+
+  it("global.pulse returns only real, typed signals", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    const events = await caller.global.pulse();
+    expect(Array.isArray(events)).toBe(true);
+    for (const e of events) {
+      expect(["breakout", "volume_spike", "momentum"]).toContain(e.type);
+      expect(["india", "crypto", "us"]).toContain(e.domain);
+      expect(e.message).toContain(e.symbol);
+    }
+  });
+
 
   it("global.overview India gainers are NSE stocks only", async () => {
     const caller = appRouter.createCaller(createPublicContext());

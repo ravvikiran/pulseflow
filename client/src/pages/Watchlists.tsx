@@ -198,7 +198,7 @@ function WatchlistDetail({ watchlistId }: { watchlistId: number }) {
                     <div className="text-2xs text-muted-foreground truncate max-w-[100px]">{item.asset.name}</div>
                   </div>
                 </div>
-                <div className="col-span-2 text-xs font-semibold tabular-nums text-foreground">{fmt(Number(price?.price ?? 0))}</div>
+                <div className="col-span-2 text-xs font-semibold tabular-nums text-foreground">{price ? fmt(Number(price.price)) : "—"}</div>
                 <div className={cn("col-span-2 text-xs font-bold tabular-nums", change >= 0 ? "text-bull" : "text-bear")}>
                   {fmtPct(change)}
                 </div>

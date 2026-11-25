@@ -112,13 +112,6 @@ export default function Notifications() {
     },
   });
 
-  const seedDemo = trpc.notifications.seedDemo.useMutation({
-    onSuccess: () => {
-      utils.notifications.invalidate();
-      toast.success("Demo notifications loaded");
-    },
-  });
-
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
@@ -279,14 +272,9 @@ export default function Notifications() {
             {search ? "Try adjusting your search or filters" : "You're all caught up!"}
           </p>
           {notifications.length === 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-4 text-xs border-slate-700 text-slate-400 hover:text-white"
-              onClick={() => seedDemo.mutate()}
-            >
-              Load Demo Notifications
-            </Button>
+            <p className="text-slate-500 text-xs mt-3 max-w-sm">
+              Notifications appear here when one of your alerts triggers. Create alerts on the Alerts page.
+            </p>
           )}
         </div>
       ) : (

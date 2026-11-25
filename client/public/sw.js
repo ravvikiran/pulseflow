@@ -1,65 +1,81 @@
 /// PulseFlow Service Worker
-const CACHE_NAME = "pulseflow-v1";
-const STATIC_ASSETS = [
-  "/",
-  "/manifest.json",
-];
+// Bump CACHE_VERSION to invalidate all cached assets on the next deploy.
+const CACHE_VERSION = "v2";
+const CACHE_NAME = `pulseflow-${CACHE_VERSION}`;
+const SHELL_URL = "/";
+const PRECACHE = [SHELL_URL, "/manifest.json"];
 
-// Install - cache shell
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
   );
   self.skipWaiting();
 });
 
-// Activate - cleanup old caches
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
-      );
-    })
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith("pulseflow-") && key !== CACHE_NAME)
+            .map((key) => caches.delete(key))
+        )
+      )
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Fetch - network first for API, cache first for static
 self.addEventListener("fetch", (event) => {
   const { request } = event;
-  const url = new URL(request.url);
-
-  // Skip non-GET requests
   if (request.method !== "GET") return;
 
-  // API calls - network only (real-time data)
+  const url = new URL(request.url);
+  // Only handle same-origin requests; leave fonts/CDNs to the browser.
+  if (url.origin !== self.location.origin) return;
+
+  // API calls: never cached (market data must be live).
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
-      fetch(request).catch(() => {
-        return new Response(JSON.stringify({ error: "offline" }), {
-          headers: { "Content-Type": "application/json" },
-          status: 503,
-        });
-      })
+      fetch(request).catch(
+        () =>
+          new Response(JSON.stringify({ error: "offline" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 503,
+          })
+      )
     );
     return;
   }
 
-  // Static assets - stale while revalidate
-  event.respondWith(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.match(request).then((cached) => {
-        const fetched = fetch(request).then((response) => {
+  // Page navigations: network first so new deploys show up immediately,
+  // falling back to the cached shell when offline.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
           if (response.ok) {
-            cache.put(request, response.clone());
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(SHELL_URL, copy));
           }
           return response;
-        }).catch(() => cached);
+        })
+        .catch(() => caches.match(SHELL_URL))
+    );
+    return;
+  }
 
-        return cached || fetched;
+  // Static assets (hashed filenames): cache first, populate on miss.
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((response) => {
+        if (response.ok && response.type === "basic") {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return response;
       });
     })
   );

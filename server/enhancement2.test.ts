@@ -1,6 +1,6 @@
 /**
  * PulseFlow Enhancement Batch 2 Tests
- * Covers: notifications router, scannerEngine, patternEngine
+ * Covers: notifications router, patternEngine, real scanner, global router
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { appRouter } from "./routers";
@@ -167,163 +167,7 @@ describe("notifications router", () => {
   });
 });
 
-// ─── Scanner Engine Tests ─────────────────────────────────────────────────────
-describe("scannerEngine", () => {
-  let scannerEngine: typeof import("./scannerEngine");
-
-  beforeEach(async () => {
-    scannerEngine = await import("./scannerEngine");
-  });
-
-  describe("runImprovedScanner", () => {
-    it("returns an array of ScanResult objects for india domain", () => {
-      const results = scannerEngine.runImprovedScanner({
-        domain: "india",
-        scanType: "ema_alignment",
-        timeframe: "1D",
-        minQualityScore: 0,
-        maxResults: 5,
-        respectCooldown: false,
-      });
-      expect(Array.isArray(results)).toBe(true);
-      expect(results.length).toBeLessThanOrEqual(5);
-    });
-
-    it("returns an array of ScanResult objects for crypto domain", () => {
-      const results = scannerEngine.runImprovedScanner({
-        domain: "crypto",
-        scanType: "volume_spike",
-        timeframe: "1D",
-        minQualityScore: 0,
-        maxResults: 5,
-        respectCooldown: false,
-      });
-      expect(Array.isArray(results)).toBe(true);
-      expect(results.length).toBeLessThanOrEqual(5);
-    });
-
-    it("returns an array of ScanResult objects for us domain", () => {
-      const results = scannerEngine.runImprovedScanner({
-        domain: "us",
-        scanType: "breakout_52w",
-        timeframe: "1D",
-        minQualityScore: 0,
-        maxResults: 5,
-        respectCooldown: false,
-      });
-      expect(Array.isArray(results)).toBe(true);
-      expect(results.length).toBeLessThanOrEqual(5);
-    });
-
-    it("each result has required fields", () => {
-      const results = scannerEngine.runImprovedScanner({
-        domain: "india",
-        scanType: "ema_alignment",
-        timeframe: "1D",
-        minQualityScore: 0,
-        maxResults: 3,
-        respectCooldown: false,
-      });
-      for (const r of results) {
-        expect(r).toHaveProperty("symbol");
-        expect(r).toHaveProperty("name");
-        expect(r).toHaveProperty("sector");
-        expect(r).toHaveProperty("price");
-        expect(r).toHaveProperty("qualityScore");
-        expect(r).toHaveProperty("confidence");
-        expect(r).toHaveProperty("signals");
-        expect(r).toHaveProperty("details");
-        expect(["high", "medium", "low"]).toContain(r.confidence);
-        expect(r.qualityScore).toBeGreaterThanOrEqual(0);
-        expect(r.qualityScore).toBeLessThanOrEqual(100);
-      }
-    });
-
-    it("filters by minQualityScore", () => {
-      const results = scannerEngine.runImprovedScanner({
-        domain: "india",
-        scanType: "ema_alignment",
-        timeframe: "1D",
-        minQualityScore: 60,
-        maxResults: 20,
-        respectCooldown: false,
-      });
-      for (const r of results) {
-        expect(r.qualityScore).toBeGreaterThanOrEqual(60);
-      }
-    });
-
-    it("respects maxResults limit", () => {
-      const results = scannerEngine.runImprovedScanner({
-        domain: "india",
-        scanType: "ema_alignment",
-        timeframe: "1D",
-        minQualityScore: 0,
-        maxResults: 3,
-        respectCooldown: false,
-      });
-      expect(results.length).toBeLessThanOrEqual(3);
-    });
-
-    it("results are sorted by qualityScore descending", () => {
-      const results = scannerEngine.runImprovedScanner({
-        domain: "india",
-        scanType: "ema_alignment",
-        timeframe: "1D",
-        minQualityScore: 0,
-        maxResults: 10,
-        respectCooldown: false,
-      });
-      for (let i = 1; i < results.length; i++) {
-        expect(results[i - 1].qualityScore).toBeGreaterThanOrEqual(results[i].qualityScore);
-      }
-    });
-
-    it("filters by sector for india domain", () => {
-      const results = scannerEngine.runImprovedScanner({
-        domain: "india",
-        scanType: "ema_alignment",
-        timeframe: "1D",
-        sector: "Information Technology",
-        minQualityScore: 0,
-        maxResults: 10,
-        respectCooldown: false,
-      });
-      for (const r of results) {
-        expect(r.sector.toLowerCase()).toContain("information technology");
-      }
-    });
-
-    it("supports all scan types", () => {
-      const scanTypes: scannerEngine.ScanType[] = [
-        "ema_alignment", "volume_spike", "breakout_52w",
-        "ath_breakout", "momentum_continuation", "relative_strength",
-      ];
-      for (const scanType of scanTypes) {
-        const results = scannerEngine.runImprovedScanner({
-          domain: "crypto",
-          scanType,
-          timeframe: "1D",
-          minQualityScore: 0,
-          maxResults: 3,
-          respectCooldown: false,
-        });
-        expect(Array.isArray(results)).toBe(true);
-      }
-    });
-
-    it("getScanTypeLabel returns correct labels", () => {
-      expect(scannerEngine.getScanTypeLabel("ema_alignment")).toBe("EMA Alignment");
-      expect(scannerEngine.getScanTypeLabel("volume_spike")).toBe("Volume Spike");
-      expect(scannerEngine.getScanTypeLabel("breakout_52w")).toBe("52-Week High Breakout");
-      expect(scannerEngine.getScanTypeLabel("ath_breakout")).toBe("ATH Breakout");
-      expect(scannerEngine.getScanTypeLabel("momentum_continuation")).toBe("Momentum Continuation");
-      expect(scannerEngine.getScanTypeLabel("relative_strength")).toBe("Relative Strength");
-    });
-  });
-});
-
-// ─── Pattern Engine Tests ─────────────────────────────────────────────────────
+// ─── Pattern Engine Tests (detectors run on candles; fixtures are test inputs only) ──
 describe("patternEngine", () => {
   let patternEngine: typeof import("./patternEngine");
 
@@ -331,116 +175,82 @@ describe("patternEngine", () => {
     patternEngine = await import("./patternEngine");
   });
 
-  describe("runPatternScanner", () => {
-    it("returns an array of PatternResult objects", () => {
-      const assets = [
-        { symbol: "RELIANCE", basePrice: 2500, sector: "Energy & Oil" },
-        { symbol: "TCS", basePrice: 3800, sector: "Information Technology" },
-      ];
-      const results = patternEngine.runPatternScanner(assets, { minConfidence: 0 });
-      expect(Array.isArray(results)).toBe(true);
-    });
+  const candle = (i: number, close: number, volume = 1000) => ({
+    open: close, high: close * 1.01, low: close * 0.99, close, volume, timestamp: 1_700_000_000_000 + i * 86_400_000,
+  });
 
-    it("each result has required fields", () => {
-      const assets = [{ symbol: "INFY", basePrice: 1500, sector: "Information Technology" }];
-      const results = patternEngine.runPatternScanner(assets, { minConfidence: 0, maxResultsPerAsset: 3 });
-      for (const r of results) {
-        expect(r).toHaveProperty("symbol");
-        expect(r).toHaveProperty("patternType");
-        expect(r).toHaveProperty("patternName");
-        expect(r).toHaveProperty("timeframe");
-        expect(r).toHaveProperty("severity");
-        expect(r).toHaveProperty("confidenceScore");
-        expect(r).toHaveProperty("patternStrength");
-        expect(r).toHaveProperty("volumeConfirmed");
-        expect(r).toHaveProperty("breakoutLevel");
-        expect(r).toHaveProperty("stopLossZone");
-        expect(r).toHaveProperty("targetLevel");
-        expect(r).toHaveProperty("description");
-        expect(["bullish", "bearish", "neutral"]).toContain(r.severity);
-        expect(r.confidenceScore).toBeGreaterThanOrEqual(0);
-        expect(r.confidenceScore).toBeLessThanOrEqual(100);
-      }
-    });
+  it("no longer exposes synthetic candle generators", () => {
+    expect("runPatternScanner" in patternEngine).toBe(false);
+    expect("scanAssetForPatterns" in patternEngine).toBe(false);
+  });
 
-    it("filters by minConfidence", () => {
-      const assets = [
-        { symbol: "HDFC", basePrice: 1700, sector: "Banking & Finance" },
-        { symbol: "ICICI", basePrice: 900, sector: "Banking & Finance" },
-        { symbol: "SBIN", basePrice: 600, sector: "Banking & Finance" },
-      ];
-      const results = patternEngine.runPatternScanner(assets, { minConfidence: 60 });
-      for (const r of results) {
-        expect(r.confidenceScore).toBeGreaterThanOrEqual(60);
-      }
-    });
+  it("finds nothing meaningful in a perfectly flat series", () => {
+    const candles = Array.from({ length: 80 }, (_, i) => candle(i, 100));
+    const results = patternEngine.detectPatternsOnCandles(candles, "FLAT", { minConfidence: 70 });
+    for (const r of results) expect(r.confidenceScore).toBeGreaterThanOrEqual(70);
+  });
 
-    it("results are sorted by confidenceScore descending", () => {
-      const assets = [
-        { symbol: "BTC", basePrice: 45000, sector: "Cryptocurrency" },
-        { symbol: "ETH", basePrice: 2500, sector: "Cryptocurrency" },
-        { symbol: "SOL", basePrice: 120, sector: "Cryptocurrency" },
-      ];
-      const results = patternEngine.runPatternScanner(assets, { minConfidence: 0 });
-      for (let i = 1; i < results.length; i++) {
-        expect(results[i - 1].confidenceScore).toBeGreaterThanOrEqual(results[i].confidenceScore);
-      }
-    });
+  it("returns well-formed results that respect minConfidence, per-asset cap and timeframe", () => {
+    // Deterministic oscillating series with a drift, built arithmetically.
+    const candles = Array.from({ length: 120 }, (_, i) => candle(i, 100 + Math.sin(i / 6) * 8 + i * 0.1, 1000 + (i % 7) * 100));
+    const results = patternEngine.detectPatternsOnCandles(candles, "FIXTURE", { minConfidence: 0, maxResultsPerAsset: 3 }, "1w");
+    expect(results.length).toBeLessThanOrEqual(3);
+    for (const r of results) {
+      expect(r.symbol).toBe("FIXTURE");
+      expect(r.timeframe).toBe("1w");
+      expect(["bullish", "bearish", "neutral"]).toContain(r.severity);
+      expect(r.confidenceScore).toBeGreaterThanOrEqual(0);
+      expect(r.confidenceScore).toBeLessThanOrEqual(100);
+      expect(r.isFalseBreakout).toBe(false);
+    }
+    for (let i = 1; i < results.length; i++) {
+      expect(results[i - 1].confidenceScore).toBeGreaterThanOrEqual(results[i].confidenceScore);
+    }
+  });
 
-    it("respects maxResultsPerAsset", () => {
-      const assets = [{ symbol: "AAPL", basePrice: 175, sector: "US Technology" }];
-      const results = patternEngine.runPatternScanner(assets, {
-        minConfidence: 0,
-        maxResultsPerAsset: 2,
-      });
-      expect(results.length).toBeLessThanOrEqual(2);
-    });
-
-    it("requireVolumeConfirmation filters correctly", () => {
-      const assets = [
-        { symbol: "NVDA", basePrice: 450, sector: "US Technology" },
-        { symbol: "MSFT", basePrice: 380, sector: "US Technology" },
-      ];
-      const results = patternEngine.runPatternScanner(assets, {
-        minConfidence: 0,
-        requireVolumeConfirmation: true,
-      });
-      for (const r of results) {
-        expect(r.volumeConfirmed).toBe(true);
-      }
-    });
-
-    it("filterFalseBreakouts removes false breakouts", () => {
-      const assets = [
-        { symbol: "WIPRO", basePrice: 450, sector: "Information Technology" },
-        { symbol: "HCL", basePrice: 1200, sector: "Information Technology" },
-      ];
-      const results = patternEngine.runPatternScanner(assets, {
-        minConfidence: 0,
-        filterFalseBreakouts: true,
-      });
-      for (const r of results) {
-        expect(r.isFalseBreakout).toBe(false);
-      }
-    });
-
-    it("PATTERN_NAMES has entries for all 14 pattern types", () => {
-      const expectedPatterns = [
-        "ascending_triangle", "descending_triangle", "symmetrical_triangle",
-        "bull_flag", "bear_flag", "cup_and_handle",
-        "double_top", "double_bottom",
-        "head_and_shoulders", "inverse_head_and_shoulders",
-        "breakout_consolidation", "support_resistance_breakout",
-        "channel_breakout", "trendline_breakout",
-      ];
-      for (const p of expectedPatterns) {
-        expect(patternEngine.PATTERN_NAMES).toHaveProperty(p);
-        expect(typeof patternEngine.PATTERN_NAMES[p as keyof typeof patternEngine.PATTERN_NAMES]).toBe("string");
-      }
-    });
+  it("PATTERN_NAMES has entries for all 14 pattern types", () => {
+    const expectedPatterns = [
+      "ascending_triangle", "descending_triangle", "symmetrical_triangle",
+      "bull_flag", "bear_flag", "cup_and_handle",
+      "double_top", "double_bottom",
+      "head_and_shoulders", "inverse_head_and_shoulders",
+      "breakout_consolidation", "support_resistance_breakout",
+      "channel_breakout", "trendline_breakout",
+    ];
+    for (const p of expectedPatterns) {
+      expect(patternEngine.PATTERN_NAMES).toHaveProperty(p);
+      expect(typeof patternEngine.PATTERN_NAMES[p as keyof typeof patternEngine.PATTERN_NAMES]).toBe("string");
+    }
   });
 });
 
+// ─── Real scanner (live Yahoo Finance data) ───────────────────────────────────
+describe("runRealScanner", () => {
+  it("returns well-formed, sorted results built from live data", async () => {
+    const { runRealScanner } = await import("./dataProvider");
+    const results = await runRealScanner({ domain: "crypto", scanType: "ema_alignment", maxResults: 5 });
+    expect(results.length).toBeLessThanOrEqual(5);
+    for (const r of results) {
+      expect(r.price).toBeGreaterThan(0);
+      expect(r.stopLoss).toBeLessThan(r.price);
+      expect(r.target).toBeGreaterThan(r.price);
+      expect(["high", "medium", "low"]).toContain(r.confidence);
+      expect(r.qualityScore).toBeGreaterThanOrEqual(40);
+      expect(r.qualityScore).toBeLessThanOrEqual(100);
+    }
+    for (let i = 1; i < results.length; i++) {
+      expect(results[i - 1].qualityScore).toBeGreaterThanOrEqual(results[i].qualityScore);
+    }
+  }, 60000);
+
+  it("confluence mode only returns assets that pass every selected strategy", async () => {
+    const { runRealScanner } = await import("./dataProvider");
+    const both = await runRealScanner({ domain: "us", scanType: ["ema_alignment", "momentum_continuation"], maxResults: 50 });
+    const single = await runRealScanner({ domain: "us", scanType: "ema_alignment", maxResults: 50 });
+    const singleSymbols = new Set(single.map(r => r.symbol));
+    for (const r of both) expect(singleSymbols.has(r.symbol)).toBe(true);
+  }, 60000);
+});
 // ─── Global Router Pattern & Validation Tests ─────────────────────────────────
 describe("global router", () => {
   describe("patterns", () => {
@@ -550,6 +360,14 @@ describe("india scanner (improved engine)", () => {
       })).rejects.toThrow();
     });
 
+    it("rejects intraday timeframes the data feed cannot support", async () => {
+      const caller = appRouter.createCaller(createAnonContext());
+      await expect(caller.india.scanner({
+        scanType: "ema_alignment",
+        timeframe: "4H" as any,
+      })).rejects.toThrow();
+    });
+
     it("rejects invalid timeframe", async () => {
       const caller = appRouter.createCaller(createAnonContext());
       await expect(caller.india.scanner({
@@ -576,7 +394,7 @@ describe("crypto scanner (improved engine)", () => {
     const caller = appRouter.createCaller(createAnonContext());
     const result = await caller.crypto.scanner({
       scanType: "relative_strength",
-      timeframe: "4H",
+      timeframe: "1D",
       minQualityScore: 0,
       maxResults: 5,
     });

@@ -49,66 +49,63 @@ function IndexStripCard({ idx }: { idx: { symbol: string; name: string; price: n
 }
 
 // ─── FII/DII Widget ───────────────────────────────────────────────────────────
-function FiiDiiWidget({ data }: { data: { fiiNet: number; diiNet: number; fiiHistory: number[]; diiHistory: number[] } }) {
-  const fiiPositive = data.fiiNet >= 0;
-  const diiPositive = data.diiNet >= 0;
-  const chartData = data.fiiHistory.map((v, i) => ({
-    day: `D-${data.fiiHistory.length - i}`,
-    FII: v,
-    DII: data.diiHistory[i] ?? 0,
-  })).reverse();
+// Real figures published by NSE for the latest trading day, in INR crore.
+type Flow = { grossBuy: number; grossSell: number; netBuy: number };
+function fmtCrore(n: number) {
+  return `₹${Math.abs(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })} Cr`;
+}
+function FiiDiiWidget({ date, fii, dii }: { date: string | null; fii: Flow; dii: Flow }) {
+  const rows = [
+    { key: "FII / FPI", flow: fii, caption: "Foreign institutional" },
+    { key: "DII", flow: dii, caption: "Domestic institutional" },
+  ];
+  const chartData = rows.map(r => ({ name: r.key, Buy: r.flow.grossBuy, Sell: r.flow.grossSell }));
 
   return (
     <div className="pf-card p-4 space-y-3">
       <div className="flex items-center gap-2">
         <Users className="w-4 h-4 text-primary" />
         <span className="text-sm font-semibold text-foreground">FII / DII Activity</span>
-        <Badge variant="outline" className="text-3xs ml-auto">NSE Only</Badge>
+        <Badge variant="outline" className="text-3xs ml-auto">{date ? `NSE · ${date}` : "NSE"}</Badge>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-surface-2 rounded p-3">
-          <div className="text-2xs text-muted-foreground uppercase tracking-wider mb-1">FII Net</div>
-          <div className={cn("text-base font-bold tabular-nums font-mono", fiiPositive ? "text-bull" : "text-bear")}>
-            {fiiPositive ? "+" : ""}{fmtINR(data.fiiNet)}
-          </div>
-          <div className={cn("text-2xs flex items-center gap-0.5 mt-0.5", fiiPositive ? "text-bull" : "text-bear")}>
-            {fiiPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-            Foreign Institutional
-          </div>
-        </div>
-        <div className="bg-surface-2 rounded p-3">
-          <div className="text-2xs text-muted-foreground uppercase tracking-wider mb-1">DII Net</div>
-          <div className={cn("text-base font-bold tabular-nums font-mono", diiPositive ? "text-bull" : "text-bear")}>
-            {diiPositive ? "+" : ""}{fmtINR(data.diiNet)}
-          </div>
-          <div className={cn("text-2xs flex items-center gap-0.5 mt-0.5", diiPositive ? "text-bull" : "text-bear")}>
-            {diiPositive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-            Domestic Institutional
-          </div>
-        </div>
+        {rows.map(({ key, flow, caption }) => {
+          const positive = flow.netBuy >= 0;
+          return (
+            <div key={key} className="bg-surface-2 rounded p-3">
+              <div className="text-2xs text-muted-foreground uppercase tracking-wider mb-1">{key} Net</div>
+              <div className={cn("text-base font-bold tabular-nums font-mono", positive ? "text-bull" : "text-bear")}>
+                {positive ? "+" : "−"}{fmtCrore(flow.netBuy)}
+              </div>
+              <div className={cn("text-2xs flex items-center gap-0.5 mt-0.5", positive ? "text-bull" : "text-bear")}>
+                {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                {caption}
+              </div>
+            </div>
+          );
+        })}
       </div>
       <div className="h-32">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} barGap={1}>
+          <BarChart data={chartData} barGap={2}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-            <XAxis dataKey="day" tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} />
-            <YAxis tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} tickFormatter={(v) => `${(v / 1e9).toFixed(1)}B`} />
+            <XAxis dataKey="name" tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} />
+            <YAxis tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
             <Tooltip
               contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: 6, fontSize: 11 }}
-              formatter={(v: number) => [fmtINR(v), ""]}
+              formatter={(v: number) => [fmtCrore(v), ""]}
             />
-            <Bar dataKey="FII" fill="var(--color-primary)" radius={[2, 2, 0, 0]} />
-            <Bar dataKey="DII" fill="var(--color-bull)" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="Buy" fill="var(--color-bull)" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="Sell" fill="var(--color-bear)" radius={[2, 2, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
   );
 }
-
 // ─── Market Breadth Widget ────────────────────────────────────────────────────
-function MarketBreadthWidget({ breadth }: { breadth: { advancing: number; declining: number; unchanged: number; adRatio: number; newHighs: number; newLows: number; putCallRatio: number; vix: number } }) {
-  const total = breadth.advancing + breadth.declining + breadth.unchanged;
+function MarketBreadthWidget({ breadth }: { breadth: { advancing: number; declining: number; unchanged: number; adRatio: number; nearHighs: number | null; nearLows: number | null; vix: number | null } }) {
+  const total = Math.max(1, breadth.advancing + breadth.declining + breadth.unchanged);
   const advPct = (breadth.advancing / total) * 100;
   const decPct = (breadth.declining / total) * 100;
 
@@ -140,10 +137,9 @@ function MarketBreadthWidget({ breadth }: { breadth: { advancing: number; declin
       <div className="grid grid-cols-2 gap-2">
         {[
           { label: "A/D Ratio", value: breadth.adRatio.toFixed(2), positive: breadth.adRatio >= 1 },
-          { label: "New 52W Highs", value: breadth.newHighs.toString(), positive: true },
-          { label: "New 52W Lows", value: breadth.newLows.toString(), positive: false },
-          { label: "India VIX", value: breadth.vix.toFixed(2), positive: breadth.vix < 20 },
-          { label: "Put/Call Ratio", value: breadth.putCallRatio.toFixed(2), positive: breadth.putCallRatio < 1 },
+          { label: "Near 52W Highs", value: breadth.nearHighs != null ? String(breadth.nearHighs) : "—", positive: true },
+          { label: "Near 52W Lows", value: breadth.nearLows != null ? String(breadth.nearLows) : "—", positive: false },
+          { label: "India VIX", value: breadth.vix != null ? breadth.vix.toFixed(2) : "—", positive: breadth.vix != null && breadth.vix < 20 },
         ].map(({ label, value, positive }) => (
           <div key={label} className="bg-surface-2 rounded p-2">
             <div className="text-3xs text-muted-foreground uppercase tracking-wider">{label}</div>
@@ -275,10 +271,10 @@ export default function IndiaDashboard() {
           </div>
           <div className="flex-1 grid grid-cols-2 gap-2">
             {[
-              { label: "India VIX", value: fmt(sentiment?.volatilityIndex ?? 0) },
+              { label: "India VIX", value: sentiment?.volatilityIndex != null ? fmt(sentiment.volatilityIndex) : "—" },
               { label: "A/D Ratio", value: fmt(sentiment?.advanceDeclineRatio ?? 0) },
-              { label: "52W Highs", value: String(Math.round((sentiment?.breadthScore ?? 50) * 0.8)) },
-              { label: "52W Lows", value: String(Math.round((100 - (sentiment?.breadthScore ?? 50)) * 0.3)) },
+              { label: "Near 52W Highs", value: data?.breadth?.nearHighs != null ? String(data.breadth.nearHighs) : "—" },
+              { label: "Near 52W Lows", value: data?.breadth?.nearLows != null ? String(data.breadth.nearLows) : "—" },
             ].map(({ label, value }) => (
               <div key={label} className="bg-surface-2 rounded p-2">
                 <div className="text-3xs text-muted-foreground uppercase tracking-wider">{label}</div>
@@ -298,18 +294,14 @@ export default function IndiaDashboard() {
         </div>
         <div className="lg:col-span-2">
           {isLoading ? <Skeleton className="h-64 w-full rounded-lg" /> : (
-            <MarketBreadthWidget breadth={data?.breadth ? {
-        advancing: data.breadth.advanceCount,
-        declining: data.breadth.declineCount,
-        unchanged: data.breadth.unchangedCount,
-        adRatio: data.breadth.advanceDeclineRatio,
-        newHighs: Math.round((data.breadth?.breadthScore ?? 50) * 0.8),
-        newLows: Math.round((100 - (data.breadth?.breadthScore ?? 50)) * 0.3),
-        putCallRatio: 0.9,
-        vix: data.sentiment?.volatilityIndex ?? 15,
-      } : {
-              advancing: 0, declining: 0, unchanged: 0, adRatio: 1,
-              newHighs: 0, newLows: 0, putCallRatio: 0.9, vix: 15,
+            <MarketBreadthWidget breadth={{
+              advancing: data?.breadth?.advanceCount ?? 0,
+              declining: data?.breadth?.declineCount ?? 0,
+              unchanged: data?.breadth?.unchangedCount ?? 0,
+              adRatio: data?.breadth?.advanceDeclineRatio ?? 1,
+              nearHighs: data?.breadth?.nearHighs ?? null,
+              nearLows: data?.breadth?.nearLows ?? null,
+              vix: data?.sentiment?.volatilityIndex ?? null,
             }} />
           )}
         </div>
@@ -356,13 +348,10 @@ export default function IndiaDashboard() {
       </div>
 
       {/* FII/DII */}
-      {isLoading ? <Skeleton className="h-64 w-full rounded-lg" /> : (
-        <FiiDiiWidget data={{
-        fiiNet: (data?.fiiActivity?.netBuy ?? 0) * 1e7,
-        diiNet: (data?.diiActivity?.netBuy ?? 0) * 1e7,
-        fiiHistory: Array.from({ length: 10 }, (_, i) => ((data?.fiiActivity?.netBuy ?? 0) + (i - 5) * 200) * 1e7),
-        diiHistory: Array.from({ length: 10 }, (_, i) => ((data?.diiActivity?.netBuy ?? 0) + (i - 5) * 150) * 1e7),
-      }} />
+      {isLoading ? <Skeleton className="h-64 w-full rounded-lg" /> : data?.fiiActivity && data?.diiActivity ? (
+        <FiiDiiWidget date={data.institutionalDate} fii={data.fiiActivity} dii={data.diiActivity} />
+      ) : (
+        <div className="pf-card p-4 text-xs text-muted-foreground">FII / DII activity is currently unavailable from NSE.</div>
       )}
 
       {/* Top Gainers & Losers */}

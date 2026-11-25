@@ -20,7 +20,6 @@ export interface NSEAsset {
   marketCap: MarketCap;
   domain: "INDIA";
   assetClass: "STOCK";
-  basePrice: number;
   isin?: string;
 }
 
@@ -32,7 +31,6 @@ export interface CryptoAsset {
   currency: "USD";
   domain: "CRYPTO";
   assetClass: "CRYPTO";
-  basePrice: number;
   circulatingSupply?: number;
   sector: string; // "Cryptocurrency" for all, with subcategory in category field
 }
@@ -46,7 +44,6 @@ export interface USAsset {
   marketCap: MarketCap;
   domain: "US";
   assetClass: "STOCK";
-  basePrice: number;
 }
 
 export interface IndexAsset {
@@ -56,67 +53,65 @@ export interface IndexAsset {
   exchange: "NSE" | "BSE" | "NYSE" | "NASDAQ" | "CRYPTO";
   currency: "INR" | "USD";
   assetClass: "INDEX";
-  basePrice: number;
   sector: string;
 }
 
 export type AnyAsset = NSEAsset | CryptoAsset | USAsset | IndexAsset;
 
 // ─── NSE India Registry ───────────────────────────────────────────────────────
-// 50 real NSE stocks, strictly India-only
+// 48 real NSE stocks, strictly India-only
 
 export const NSE_REGISTRY: NSEAsset[] = [
   // NIFTY 50 Large Caps
-  { symbol: "RELIANCE", name: "Reliance Industries", sector: "Oil & Gas", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 2850 },
-  { symbol: "TCS", name: "Tata Consultancy Services", sector: "Information Technology", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 3920 },
-  { symbol: "HDFCBANK", name: "HDFC Bank", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 1680 },
-  { symbol: "INFY", name: "Infosys", sector: "Information Technology", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 1750 },
-  { symbol: "ICICIBANK", name: "ICICI Bank", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 1240 },
-  { symbol: "HINDUNILVR", name: "Hindustan Unilever", sector: "FMCG", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 2450 },
-  { symbol: "SBIN", name: "State Bank of India", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 820 },
-  { symbol: "BAJFINANCE", name: "Bajaj Finance", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 7200 },
-  { symbol: "BHARTIARTL", name: "Bharti Airtel", sector: "Telecom", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 1580 },
-  { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 1890 },
-  { symbol: "WIPRO", name: "Wipro", sector: "Information Technology", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 465 },
-  { symbol: "HCLTECH", name: "HCL Technologies", sector: "Information Technology", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 1620 },
-  { symbol: "ASIANPAINT", name: "Asian Paints", sector: "Consumer Goods", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 2680 },
-  { symbol: "MARUTI", name: "Maruti Suzuki", sector: "Automobiles", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 12800 },
-  { symbol: "SUNPHARMA", name: "Sun Pharmaceutical", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 1720 },
-  { symbol: "TITAN", name: "Titan Company", sector: "Consumer Goods", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 3450 },
-  { symbol: "ONGC", name: "Oil and Natural Gas Corp", sector: "Oil & Gas", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 285 },
-  { symbol: "POWERGRID", name: "Power Grid Corporation", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 340 },
-  { symbol: "NTPC", name: "NTPC", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 380 },
-  { symbol: "DRREDDY", name: "Dr. Reddy's Laboratories", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 6200 },
-  { symbol: "CIPLA", name: "Cipla", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 1580 },
-  { symbol: "TATASTEEL", name: "Tata Steel", sector: "Metals & Mining", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 165 },
-  { symbol: "JSWSTEEL", name: "JSW Steel", sector: "Metals & Mining", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 920 },
-  { symbol: "COALINDIA", name: "Coal India", sector: "Metals & Mining", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 480 },
-  { symbol: "DLF", name: "DLF", sector: "Real Estate", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 820 },
-  { symbol: "ULTRACEMCO", name: "UltraTech Cement", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 10200 },
-  { symbol: "NESTLEIND", name: "Nestle India", sector: "FMCG", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 2450 },
-  { symbol: "TECHM", name: "Tech Mahindra", sector: "Information Technology", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 1580 },
-  { symbol: "ADANIENT", name: "Adani Enterprises", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK", basePrice: 2850 },
+  { symbol: "RELIANCE", name: "Reliance Industries", sector: "Oil & Gas", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "TCS", name: "Tata Consultancy Services", sector: "Information Technology", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "HDFCBANK", name: "HDFC Bank", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "INFY", name: "Infosys", sector: "Information Technology", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "ICICIBANK", name: "ICICI Bank", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "HINDUNILVR", name: "Hindustan Unilever", sector: "FMCG", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "SBIN", name: "State Bank of India", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "BAJFINANCE", name: "Bajaj Finance", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "BHARTIARTL", name: "Bharti Airtel", sector: "Telecom", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "KOTAKBANK", name: "Kotak Mahindra Bank", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "WIPRO", name: "Wipro", sector: "Information Technology", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "HCLTECH", name: "HCL Technologies", sector: "Information Technology", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "ASIANPAINT", name: "Asian Paints", sector: "Consumer Goods", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "MARUTI", name: "Maruti Suzuki", sector: "Automobiles", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "SUNPHARMA", name: "Sun Pharmaceutical", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "TITAN", name: "Titan Company", sector: "Consumer Goods", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "ONGC", name: "Oil and Natural Gas Corp", sector: "Oil & Gas", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "POWERGRID", name: "Power Grid Corporation", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "NTPC", name: "NTPC", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "DRREDDY", name: "Dr. Reddy's Laboratories", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "CIPLA", name: "Cipla", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "TATASTEEL", name: "Tata Steel", sector: "Metals & Mining", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "JSWSTEEL", name: "JSW Steel", sector: "Metals & Mining", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "COALINDIA", name: "Coal India", sector: "Metals & Mining", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "DLF", name: "DLF", sector: "Real Estate", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "ULTRACEMCO", name: "UltraTech Cement", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "NESTLEIND", name: "Nestle India", sector: "FMCG", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "TECHM", name: "Tech Mahindra", sector: "Information Technology", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "ADANIENT", name: "Adani Enterprises", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "LARGE", domain: "INDIA", assetClass: "STOCK" },
   // Mid Caps
-  { symbol: "BAJAJFINSV", name: "Bajaj Finserv", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 1680 },
-  { symbol: "HDFCLIFE", name: "HDFC Life Insurance", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 680 },
-  { symbol: "SBILIFE", name: "SBI Life Insurance", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 1580 },
-  { symbol: "APOLLOHOSP", name: "Apollo Hospitals", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 6800 },
-  { symbol: "DIVISLAB", name: "Divi's Laboratories", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 4200 },
-  { symbol: "EICHERMOT", name: "Eicher Motors", sector: "Automobiles", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 4850 },
-  { symbol: "BAJAJ-AUTO", name: "Bajaj Auto", sector: "Automobiles", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 9200 },
-  { symbol: "HEROMOTOCO", name: "Hero MotoCorp", sector: "Automobiles", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 4800 },
-  { symbol: "GRASIM", name: "Grasim Industries", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 2650 },
-  { symbol: "INDUSINDBK", name: "IndusInd Bank", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 1050 },
-  { symbol: "TATACONSUM", name: "Tata Consumer Products", sector: "FMCG", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 1080 },
-  { symbol: "PIDILITIND", name: "Pidilite Industries", sector: "Consumer Goods", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 2850 },
-  { symbol: "HAVELLS", name: "Havells India", sector: "Consumer Goods", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 1680 },
-  { symbol: "MUTHOOTFIN", name: "Muthoot Finance", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 1950 },
-  { symbol: "LUPIN", name: "Lupin", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 1680 },
-  { symbol: "TORNTPHARM", name: "Torrent Pharmaceuticals", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 3200 },
-  { symbol: "AMBUJACEM", name: "Ambuja Cements", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 620 },
-  { symbol: "SHREECEM", name: "Shree Cement", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 28500 },
-  { symbol: "ICICIPRULI", name: "ICICI Prudential Life", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 680 },
-  { symbol: "BANKBARODA", name: "Bank of Baroda", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK", basePrice: 240 },
+  { symbol: "BAJAJFINSV", name: "Bajaj Finserv", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "HDFCLIFE", name: "HDFC Life Insurance", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "SBILIFE", name: "SBI Life Insurance", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "APOLLOHOSP", name: "Apollo Hospitals", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "DIVISLAB", name: "Divi's Laboratories", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "EICHERMOT", name: "Eicher Motors", sector: "Automobiles", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "BAJAJ-AUTO", name: "Bajaj Auto", sector: "Automobiles", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "HEROMOTOCO", name: "Hero MotoCorp", sector: "Automobiles", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "GRASIM", name: "Grasim Industries", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "INDUSINDBK", name: "IndusInd Bank", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "TATACONSUM", name: "Tata Consumer Products", sector: "FMCG", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "PIDILITIND", name: "Pidilite Industries", sector: "Consumer Goods", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "HAVELLS", name: "Havells India", sector: "Consumer Goods", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "MUTHOOTFIN", name: "Muthoot Finance", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "LUPIN", name: "Lupin", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "TORNTPHARM", name: "Torrent Pharmaceuticals", sector: "Healthcare & Pharma", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "AMBUJACEM", name: "Ambuja Cements", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "SHREECEM", name: "Shree Cement", sector: "Infrastructure", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
+  { symbol: "BANKBARODA", name: "Bank of Baroda", sector: "Banking & Finance", exchange: "NSE", currency: "INR", marketCap: "MID", domain: "INDIA", assetClass: "STOCK" },
 ];
 
 // ─── Crypto Registry ──────────────────────────────────────────────────────────
@@ -124,43 +119,43 @@ export const NSE_REGISTRY: NSEAsset[] = [
 
 export const CRYPTO_REGISTRY: CryptoAsset[] = [
   // Layer 1
-  { symbol: "BTC", name: "Bitcoin", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 67500, sector: "Cryptocurrency" },
-  { symbol: "ETH", name: "Ethereum", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 3450, sector: "Cryptocurrency" },
-  { symbol: "SOL", name: "Solana", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 185, sector: "Cryptocurrency" },
-  { symbol: "ADA", name: "Cardano", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 0.48, sector: "Cryptocurrency" },
-  { symbol: "AVAX", name: "Avalanche", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 38, sector: "Cryptocurrency" },
-  { symbol: "DOT", name: "Polkadot", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 8.5, sector: "Cryptocurrency" },
-  { symbol: "ATOM", name: "Cosmos", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 9.2, sector: "Cryptocurrency" },
-  { symbol: "NEAR", name: "NEAR Protocol", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 7.8, sector: "Cryptocurrency" },
-  { symbol: "APT", name: "Aptos", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 12.5, sector: "Cryptocurrency" },
-  { symbol: "SUI", name: "Sui", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 1.85, sector: "Cryptocurrency" },
+  { symbol: "BTC", name: "Bitcoin", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "ETH", name: "Ethereum", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "SOL", name: "Solana", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "ADA", name: "Cardano", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "AVAX", name: "Avalanche", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "DOT", name: "Polkadot", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "ATOM", name: "Cosmos", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "NEAR", name: "NEAR Protocol", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "APT", name: "Aptos", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "SUI", name: "Sui", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
   // Layer 2
-  { symbol: "MATIC", name: "Polygon", category: "LAYER2", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 0.72, sector: "Cryptocurrency" },
-  { symbol: "ARB", name: "Arbitrum", category: "LAYER2", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 1.15, sector: "Cryptocurrency" },
-  { symbol: "OP", name: "Optimism", category: "LAYER2", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 2.45, sector: "Cryptocurrency" },
-  { symbol: "IMX", name: "Immutable X", category: "LAYER2", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 2.1, sector: "Cryptocurrency" },
+  { symbol: "MATIC", name: "Polygon", category: "LAYER2", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "ARB", name: "Arbitrum", category: "LAYER2", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "OP", name: "Optimism", category: "LAYER2", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "IMX", name: "Immutable X", category: "LAYER2", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
   // DeFi
-  { symbol: "UNI", name: "Uniswap", category: "DEFI", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 9.8, sector: "Cryptocurrency" },
-  { symbol: "AAVE", name: "Aave", category: "DEFI", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 185, sector: "Cryptocurrency" },
-  { symbol: "LINK", name: "Chainlink", category: "INFRASTRUCTURE", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 18.5, sector: "Cryptocurrency" },
-  { symbol: "MKR", name: "Maker", category: "DEFI", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 2850, sector: "Cryptocurrency" },
-  { symbol: "CRV", name: "Curve DAO", category: "DEFI", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 0.58, sector: "Cryptocurrency" },
+  { symbol: "UNI", name: "Uniswap", category: "DEFI", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "AAVE", name: "Aave", category: "DEFI", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "LINK", name: "Chainlink", category: "INFRASTRUCTURE", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "MKR", name: "Maker", category: "DEFI", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "CRV", name: "Curve DAO", category: "DEFI", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
   // Exchange Tokens
-  { symbol: "BNB", name: "Binance Coin", category: "EXCHANGE", exchange: "BINANCE", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 580, sector: "Cryptocurrency" },
-  { symbol: "OKB", name: "OKB", category: "EXCHANGE", exchange: "KRAKEN", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 52, sector: "Cryptocurrency" },
+  { symbol: "BNB", name: "Binance Coin", category: "EXCHANGE", exchange: "BINANCE", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "OKB", name: "OKB", category: "EXCHANGE", exchange: "KRAKEN", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
   // Payments / Cross-chain
-  { symbol: "XRP", name: "Ripple", category: "INFRASTRUCTURE", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 0.62, sector: "Cryptocurrency" },
-  { symbol: "LTC", name: "Litecoin", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 92, sector: "Cryptocurrency" },
-  { symbol: "XLM", name: "Stellar", category: "INFRASTRUCTURE", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 0.14, sector: "Cryptocurrency" },
+  { symbol: "XRP", name: "Ripple", category: "INFRASTRUCTURE", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "LTC", name: "Litecoin", category: "LAYER1", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "XLM", name: "Stellar", category: "INFRASTRUCTURE", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
   // Meme
-  { symbol: "DOGE", name: "Dogecoin", category: "MEME", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 0.18, sector: "Cryptocurrency" },
-  { symbol: "SHIB", name: "Shiba Inu", category: "MEME", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 0.000028, sector: "Cryptocurrency" },
-  { symbol: "PEPE", name: "Pepe", category: "MEME", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 0.0000145, sector: "Cryptocurrency" },
+  { symbol: "DOGE", name: "Dogecoin", category: "MEME", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "SHIB", name: "Shiba Inu", category: "MEME", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "PEPE", name: "Pepe", category: "MEME", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
   // Gaming / Metaverse
-  { symbol: "AXS", name: "Axie Infinity", category: "GAMING", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 8.2, sector: "Cryptocurrency" },
-  { symbol: "SAND", name: "The Sandbox", category: "GAMING", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 0.48, sector: "Cryptocurrency" },
+  { symbol: "AXS", name: "Axie Infinity", category: "GAMING", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
+  { symbol: "SAND", name: "The Sandbox", category: "GAMING", exchange: "MULTI", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
   // Privacy
-  { symbol: "XMR", name: "Monero", category: "PRIVACY", exchange: "KRAKEN", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", basePrice: 165, sector: "Cryptocurrency" },
+  { symbol: "XMR", name: "Monero", category: "PRIVACY", exchange: "KRAKEN", currency: "USD", domain: "CRYPTO", assetClass: "CRYPTO", sector: "Cryptocurrency" },
 ];
 
 // ─── US Market Registry ───────────────────────────────────────────────────────
@@ -168,59 +163,57 @@ export const CRYPTO_REGISTRY: CryptoAsset[] = [
 
 export const US_REGISTRY: USAsset[] = [
   // Tech
-  { symbol: "AAPL", name: "Apple Inc.", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 185 },
-  { symbol: "MSFT", name: "Microsoft Corporation", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 415 },
-  { symbol: "GOOGL", name: "Alphabet Inc.", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 175 },
-  { symbol: "AMZN", name: "Amazon.com Inc.", sector: "Consumer Discretionary", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 195 },
-  { symbol: "NVDA", name: "NVIDIA Corporation", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 875 },
-  { symbol: "META", name: "Meta Platforms Inc.", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 520 },
-  { symbol: "TSLA", name: "Tesla Inc.", sector: "Consumer Discretionary", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 245 },
-  { symbol: "AMD", name: "Advanced Micro Devices", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 165 },
-  { symbol: "INTC", name: "Intel Corporation", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 32 },
+  { symbol: "AAPL", name: "Apple Inc.", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "MSFT", name: "Microsoft Corporation", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "GOOGL", name: "Alphabet Inc.", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "AMZN", name: "Amazon.com Inc.", sector: "Consumer Discretionary", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "NVDA", name: "NVIDIA Corporation", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "META", name: "Meta Platforms Inc.", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "TSLA", name: "Tesla Inc.", sector: "Consumer Discretionary", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "AMD", name: "Advanced Micro Devices", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "INTC", name: "Intel Corporation", sector: "Technology", exchange: "NASDAQ", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
   // Finance
-  { symbol: "JPM", name: "JPMorgan Chase & Co.", sector: "Financials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 215 },
-  { symbol: "BAC", name: "Bank of America Corp.", sector: "Financials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 38 },
-  { symbol: "GS", name: "Goldman Sachs Group", sector: "Financials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 480 },
-  { symbol: "V", name: "Visa Inc.", sector: "Financials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 275 },
+  { symbol: "JPM", name: "JPMorgan Chase & Co.", sector: "Financials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "BAC", name: "Bank of America Corp.", sector: "Financials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "GS", name: "Goldman Sachs Group", sector: "Financials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "V", name: "Visa Inc.", sector: "Financials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
   // Healthcare
-  { symbol: "JNJ", name: "Johnson & Johnson", sector: "Healthcare", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 148 },
-  { symbol: "UNH", name: "UnitedHealth Group", sector: "Healthcare", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 520 },
-  { symbol: "PFE", name: "Pfizer Inc.", sector: "Healthcare", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 28 },
+  { symbol: "JNJ", name: "Johnson & Johnson", sector: "Healthcare", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "UNH", name: "UnitedHealth Group", sector: "Healthcare", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "PFE", name: "Pfizer Inc.", sector: "Healthcare", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
   // Energy
-  { symbol: "XOM", name: "Exxon Mobil Corp.", sector: "Energy", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 115 },
-  { symbol: "CVX", name: "Chevron Corporation", sector: "Energy", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 158 },
+  { symbol: "XOM", name: "Exxon Mobil Corp.", sector: "Energy", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "CVX", name: "Chevron Corporation", sector: "Energy", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
   // Consumer
-  { symbol: "KO", name: "The Coca-Cola Company", sector: "Consumer Staples", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 62 },
-  { symbol: "PG", name: "Procter & Gamble Co.", sector: "Consumer Staples", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 168 },
-  { symbol: "WMT", name: "Walmart Inc.", sector: "Consumer Discretionary", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 68 },
+  { symbol: "KO", name: "The Coca-Cola Company", sector: "Consumer Staples", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "PG", name: "Procter & Gamble Co.", sector: "Consumer Staples", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "WMT", name: "Walmart Inc.", sector: "Consumer Discretionary", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
   // Industrial
-  { symbol: "BA", name: "The Boeing Company", sector: "Industrials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 185 },
-  { symbol: "CAT", name: "Caterpillar Inc.", sector: "Industrials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 365 },
+  { symbol: "BA", name: "The Boeing Company", sector: "Industrials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "CAT", name: "Caterpillar Inc.", sector: "Industrials", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
   // Telecom
-  { symbol: "VZ", name: "Verizon Communications", sector: "Communication Services", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 40 },
-  { symbol: "T", name: "AT&T Inc.", sector: "Communication Services", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK", basePrice: 17 },
+  { symbol: "VZ", name: "Verizon Communications", sector: "Communication Services", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
+  { symbol: "T", name: "AT&T Inc.", sector: "Communication Services", exchange: "NYSE", currency: "USD", marketCap: "LARGE", domain: "US", assetClass: "STOCK" },
 ];
 
 // ─── Index Registry ───────────────────────────────────────────────────────────
 
 export const INDEX_REGISTRY: IndexAsset[] = [
   // India Indices
-  { symbol: "NIFTY50", name: "Nifty 50", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", basePrice: 24800, sector: "Index" },
-  { symbol: "SENSEX", name: "BSE Sensex", domain: "INDIA", exchange: "BSE", currency: "INR", assetClass: "INDEX", basePrice: 81500, sector: "Index" },
-  { symbol: "NIFTYBANK", name: "Nifty Bank", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", basePrice: 52000, sector: "Index" },
-  { symbol: "NIFTYIT", name: "Nifty IT", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", basePrice: 38000, sector: "Index" },
-  { symbol: "NIFTYPHARMA", name: "Nifty Pharma", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", basePrice: 21000, sector: "Index" },
-  { symbol: "NIFTYMETAL", name: "Nifty Metal", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", basePrice: 9800, sector: "Index" },
-  { symbol: "NIFTYAUTO", name: "Nifty Auto", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", basePrice: 24000, sector: "Index" },
-  { symbol: "NIFTYFMCG", name: "Nifty FMCG", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", basePrice: 58000, sector: "Index" },
-  { symbol: "NIFTYMIDCAP", name: "Nifty Midcap 100", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", basePrice: 56000, sector: "Index" },
-  { symbol: "NIFTYSMALLCAP", name: "Nifty Smallcap 100", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", basePrice: 18500, sector: "Index" },
+  { symbol: "NIFTY50", name: "Nifty 50", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", sector: "Index" },
+  { symbol: "SENSEX", name: "BSE Sensex", domain: "INDIA", exchange: "BSE", currency: "INR", assetClass: "INDEX", sector: "Index" },
+  { symbol: "NIFTYBANK", name: "Nifty Bank", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", sector: "Index" },
+  { symbol: "NIFTYIT", name: "Nifty IT", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", sector: "Index" },
+  { symbol: "NIFTYPHARMA", name: "Nifty Pharma", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", sector: "Index" },
+  { symbol: "NIFTYMETAL", name: "Nifty Metal", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", sector: "Index" },
+  { symbol: "NIFTYAUTO", name: "Nifty Auto", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", sector: "Index" },
+  { symbol: "NIFTYFMCG", name: "Nifty FMCG", domain: "INDIA", exchange: "NSE", currency: "INR", assetClass: "INDEX", sector: "Index" },
   // US Indices
-  { symbol: "SPX", name: "S&P 500", domain: "US", exchange: "NYSE", currency: "USD", assetClass: "INDEX", basePrice: 5280, sector: "Index" },
-  { symbol: "NDX", name: "NASDAQ 100", domain: "US", exchange: "NASDAQ", currency: "USD", assetClass: "INDEX", basePrice: 18500, sector: "Index" },
-  { symbol: "DJI", name: "Dow Jones Industrial Average", domain: "US", exchange: "NYSE", currency: "USD", assetClass: "INDEX", basePrice: 39800, sector: "Index" },
-  { symbol: "RUT", name: "Russell 2000", domain: "US", exchange: "NYSE", currency: "USD", assetClass: "INDEX", basePrice: 2080, sector: "Index" },
-  { symbol: "VIX", name: "CBOE Volatility Index", domain: "US", exchange: "NYSE", currency: "USD", assetClass: "INDEX", basePrice: 18.5, sector: "Index" },
+  { symbol: "SPX", name: "S&P 500", domain: "US", exchange: "NYSE", currency: "USD", assetClass: "INDEX", sector: "Index" },
+  { symbol: "NDX", name: "NASDAQ 100", domain: "US", exchange: "NASDAQ", currency: "USD", assetClass: "INDEX", sector: "Index" },
+  { symbol: "DJI", name: "Dow Jones Industrial Average", domain: "US", exchange: "NYSE", currency: "USD", assetClass: "INDEX", sector: "Index" },
+  { symbol: "RUT", name: "Russell 2000", domain: "US", exchange: "NYSE", currency: "USD", assetClass: "INDEX", sector: "Index" },
+  { symbol: "VIX", name: "CBOE Volatility Index", domain: "US", exchange: "NYSE", currency: "USD", assetClass: "INDEX", sector: "Index" },
 ];
 
 // ─── Commodities Registry ─────────────────────────────────────────────────────
@@ -232,23 +225,22 @@ export interface CommodityAsset {
   currency: "USD";
   domain: "COMMODITIES";
   assetClass: "COMMODITY";
-  basePrice: number;
   sector: string;
   unit: string;
 }
 
 export const COMMODITY_REGISTRY: CommodityAsset[] = [
   // Precious Metals
-  { symbol: "GOLD", name: "Gold", category: "PRECIOUS_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 2350, sector: "Precious Metals", unit: "oz" },
-  { symbol: "SILVER", name: "Silver", category: "PRECIOUS_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 29, sector: "Precious Metals", unit: "oz" },
-  { symbol: "PLATINUM", name: "Platinum", category: "PRECIOUS_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 980, sector: "Precious Metals", unit: "oz" },
+  { symbol: "GOLD", name: "Gold", category: "PRECIOUS_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", sector: "Precious Metals", unit: "oz" },
+  { symbol: "SILVER", name: "Silver", category: "PRECIOUS_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", sector: "Precious Metals", unit: "oz" },
+  { symbol: "PLATINUM", name: "Platinum", category: "PRECIOUS_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", sector: "Precious Metals", unit: "oz" },
   // Energy
-  { symbol: "CRUDE_OIL", name: "Crude Oil WTI", category: "ENERGY", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 78, sector: "Energy", unit: "barrel" },
-  { symbol: "BRENT", name: "Brent Crude Oil", category: "ENERGY", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 82, sector: "Energy", unit: "barrel" },
-  { symbol: "NATURAL_GAS", name: "Natural Gas", category: "ENERGY", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 2.5, sector: "Energy", unit: "MMBtu" },
+  { symbol: "CRUDE_OIL", name: "Crude Oil WTI", category: "ENERGY", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", sector: "Energy", unit: "barrel" },
+  { symbol: "BRENT", name: "Brent Crude Oil", category: "ENERGY", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", sector: "Energy", unit: "barrel" },
+  { symbol: "NATURAL_GAS", name: "Natural Gas", category: "ENERGY", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", sector: "Energy", unit: "MMBtu" },
   // Base Metals
-  { symbol: "COPPER", name: "Copper", category: "BASE_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 4.2, sector: "Base Metals", unit: "lb" },
-  { symbol: "ALUMINIUM", name: "Aluminium", category: "BASE_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", basePrice: 2400, sector: "Base Metals", unit: "ton" },
+  { symbol: "COPPER", name: "Copper", category: "BASE_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", sector: "Base Metals", unit: "lb" },
+  { symbol: "ALUMINIUM", name: "Aluminium", category: "BASE_METAL", currency: "USD", domain: "COMMODITIES", assetClass: "COMMODITY", sector: "Base Metals", unit: "ton" },
 ];
 
 // ─── Validation Layer ─────────────────────────────────────────────────────────

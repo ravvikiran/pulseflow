@@ -68,7 +68,7 @@ function AssetDetail({ symbol }: { symbol: string }) {
   const [compareSymbols, setCompareSymbols] = useState<string[]>([]);
   const [showCompare, setShowCompare] = useState(false);
 
-  const { data: asset, isLoading } = trpc.assets.detail.useQuery({ symbol }, { refetchInterval: 30000 });
+  const { data: asset, isLoading, error: detailError } = trpc.assets.detail.useQuery({ symbol }, { refetchInterval: 30000, retry: 1 });
   const { data: compareData } = trpc.assets.compare.useQuery(
     { symbols: [symbol, ...compareSymbols] },
     { enabled: compareSymbols.length > 0 }
@@ -85,7 +85,9 @@ function AssetDetail({ symbol }: { symbol: string }) {
   );
 
   if (!asset) return (
-    <div className="p-6 text-center text-muted-foreground">Asset not found</div>
+    <div className="p-6 text-center text-muted-foreground">
+      {detailError?.data?.code === "NOT_FOUND" ? "Asset not found" : `Live data for ${symbol} is unavailable right now. Try again shortly.`}
+    </div>
   );
 
   const change = Number(asset.changePercent ?? 0);

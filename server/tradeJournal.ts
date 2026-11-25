@@ -3,6 +3,7 @@
  * Stores saved trades in a local JSON file for tracking and review.
  */
 
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -54,22 +55,39 @@ function ensureDataDir() {
   }
 }
 
-function readJournal(): JournalData {
-  try {
-    if (fs.existsSync(JOURNAL_PATH)) {
-      const raw = fs.readFileSync(JOURNAL_PATH, "utf-8");
-      return JSON.parse(raw);
-    }
-  } catch {
-    // Corrupted file, start fresh
-  }
+function emptyJournal(): JournalData {
   return { trades: [], lastUpdated: new Date().toISOString() };
+}
+
+function readJournal(): JournalData {
+  if (!fs.existsSync(JOURNAL_PATH)) return emptyJournal();
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(JOURNAL_PATH, "utf-8"));
+    if (parsed && Array.isArray(parsed.trades)) return parsed as JournalData;
+    throw new Error("unexpected journal shape");
+  } catch (error) {
+    // Preserve the unreadable file instead of letting the next write silently
+    // overwrite the user's trade history.
+    const backup = `${JOURNAL_PATH}.corrupt-${Date.now()}`;
+    try {
+      fs.renameSync(JOURNAL_PATH, backup);
+      console.error(`[TradeJournal] Unreadable journal moved to ${backup}:`, (error as Error).message);
+    } catch {
+      console.error("[TradeJournal] Unreadable journal and backup failed:", (error as Error).message);
+    }
+    return emptyJournal();
+  }
 }
 
 function writeJournal(data: JournalData) {
   ensureDataDir();
   data.lastUpdated = new Date().toISOString();
-  fs.writeFileSync(JOURNAL_PATH, JSON.stringify(data, null, 2), "utf-8");
+  // Atomic write: write a temp file then rename, so a crash mid-write can't
+  // leave a truncated journal behind.
+  const tmp = `${JOURNAL_PATH}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), "utf-8");
+  fs.renameSync(tmp, JOURNAL_PATH);
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -114,7 +132,8 @@ export function saveTrade(trade: Omit<SavedTrade, "id" | "status">): SaveTradeRe
 
   const newTrade: SavedTrade = {
     ...trade,
-    id: `${trade.symbol}-${Date.now()}`,
+    // Symbol prefix keeps IDs readable; the random suffix prevents collisions.
+    id: `${trade.symbol}-${Date.now()}-${randomUUID().slice(0, 8)}`,
     status: "open",
   };
   journal.trades.unshift(newTrade); // newest first

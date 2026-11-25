@@ -26,7 +26,7 @@ A real-time financial market intelligence platform providing technical analysis,
 | API | tRPC 11 (type-safe, end-to-end) over Express 4 |
 | Data | Yahoo Finance (`yahoo-finance2` v3) |
 | Database | MySQL via Drizzle ORM (optional — works without) |
-| Auth | No authentication required (local tool) |
+| Auth | None (single-user local tool). Do not expose publicly without adding auth |
 | Build | Vite 7 + esbuild, pnpm |
 
 ---
@@ -35,7 +35,7 @@ A real-time financial market intelligence platform providing technical analysis,
 
 ### Prerequisites
 
-- **Node.js 20+**
+- **Node.js 20.19+** (22 recommended, see `.nvmrc`)
 - **pnpm** (required — `npm install -g pnpm`)
 - **MySQL** (optional — app works fully without database using live Yahoo data)
 
@@ -88,10 +88,12 @@ client/src/
 server/
 ├── _core/                    # Express server, tRPC setup, auth
 ├── routers.ts                # All tRPC procedures
-├── dataProvider.ts           # Yahoo Finance + fallback logic
+├── dataProvider.ts           # Real prices/history, sector scores, scanners (no fallbacks)
 ├── yahooFinance.ts           # Yahoo API wrapper with caching
-├── marketEngine.ts           # Simulated data (fallback)
-├── scannerEngine.ts          # Synthetic scanner (for cron jobs)
+├── indicators.ts             # EMA, RSI, MACD, ATR (pure math)
+├── marketAnalytics.ts        # Breadth, sentiment and history from real closes
+├── externalData.ts           # Fear & Greed, CoinGecko, NSE FII/DII
+├── alertEngine.ts            # Real alert evaluation
 ├── patternEngine.ts          # 14 chart pattern detectors
 ├── assetRegistry.ts          # 120+ assets (NSE/Crypto/US)
 └── scheduledJobs.ts          # Background refresh handlers
@@ -99,6 +101,19 @@ drizzle/schema.ts             # 16 database tables
 ```
 
 ---
+
+## Data Policy
+
+PulseFlow shows **real data only**. Nothing is generated, simulated or randomised. When a source has no data for a symbol or widget, the symbol is left out or the widget says it is unavailable.
+
+| Data | Source (all free, no API key) |
+|------|-------------------------------|
+| Prices, history, indices, VIX | Yahoo Finance |
+| Crypto Fear & Greed (+ history) | Alternative.me |
+| BTC/ETH dominance, total market cap, exchange volume | CoinGecko |
+| FII / DII activity (INR crore) | NSE India |
+
+Sentiment, breadth, sector scores and their histories are calculated from the real Yahoo closes. Requests are rate-limited and retried, so first loads can take several seconds.
 
 ## Market Data
 
@@ -137,10 +152,24 @@ Indicators used: Wilder's RSI(14), MACD(12,26,9), EMA(20/50/200), ATR(14), Volum
 
 ```bash
 DATABASE_URL=mysql://user:pass@host:3306/db  # Optional — for persistence
-PORT=3000                                     # Server port
-USE_SIMULATED_DATA=true                       # Force offline mode (no Yahoo calls)
-CRON_API_KEY=                                 # Protect scheduled job endpoints
+PORT=3000                                     # Server port (production fails fast if busy)
+CRON_API_KEY=                                 # 16+ chars; required for /api/scheduled/* in production
+TRUST_PROXY=1                                 # Proxy hops, when behind a reverse proxy
+API_RATE_LIMIT_PER_MIN=300                    # Per-IP limit on /api (0 = off)
 ```
+
+Variables are validated at startup in `server/_core/env.ts`.
+
+---
+
+## Production Notes
+
+- **Health check:** `GET /api/health` returns status and uptime.
+- **Security headers:** Helmet with a strict Content-Security-Policy in production, gzip compression, 1 MB body limit, per-IP rate limiting on `/api`.
+- **Scheduled jobs:** `POST /api/scheduled/*` requires the `x-api-key` header matching `CRON_API_KEY`. Without a key they run freely in development and are disabled in production.
+- **Shutdown:** `SIGTERM`/`SIGINT` drain connections and close the database pool.
+- **Caching:** `dist/public/assets/*` is served `immutable`; `index.html`, `sw.js` and `manifest.json` always revalidate.
+- **CI:** `.github/workflows/ci.yml` runs typecheck, tests and build.
 
 ---
 

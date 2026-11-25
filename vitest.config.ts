@@ -15,5 +15,11 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    // Router tests call live public data sources (Yahoo Finance etc.), which are
+    // rate-limited on purpose, so cold requests can take a while.
+    testTimeout: 120_000,
+    hookTimeout: 60_000,
+    // Run files one at a time so they share polite request pacing.
+    fileParallelism: false,
   },
 });

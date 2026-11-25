@@ -259,19 +259,6 @@ export function NotificationBell() {
     refetchInterval: 30000,
   });
 
-  // Seed demo notifications on first load
-  const seedDemo = trpc.notifications.seedDemo.useMutation({
-    onSuccess: (data) => {
-      if ((data.seeded ?? 0) > 0) utils.notifications.invalidate();
-    },
-  });
-
-  useEffect(() => {
-    if (user && !seedDemo.isPending) {
-      seedDemo.mutate();
-    }
-  }, [user?.id]);
-
   // Close on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {

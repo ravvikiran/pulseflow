@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sparkline, generateSparklineData } from "@/components/Sparkline";
+import { Sparkline } from "@/components/Sparkline";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip as RechartsTooltip, Cell,
@@ -112,6 +112,11 @@ export default function USDashboard() {
   const { data: indices, isLoading: indicesLoading } = trpc.us.indices.useQuery(undefined, {
     refetchInterval: 60000,
   });
+  const indexSymbols = (indices ?? []).map((i: any) => i.symbol as string);
+  const { data: sparklines } = trpc.assets.sparklines.useQuery(
+    { symbols: indexSymbols },
+    { enabled: indexSymbols.length > 0, staleTime: 5 * 60_000 }
+  );
 
   const sectorChartData = useMemo(() => {
     if (!sectorHeatmap) return [];
@@ -160,21 +165,6 @@ export default function USDashboard() {
         </div>
       )}
 
-      {/* Future-Ready Notice */}
-      <div className="pf-card p-4 border-amber-500/20 bg-amber-500/5">
-        <div className="flex items-start gap-3">
-          <Globe className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-          <div>
-            <div className="text-sm font-semibold text-amber-400">US Market Module — Simulation Mode</div>
-            <div className="text-xs text-muted-foreground mt-1">
-              This module is architected and future-ready. Currently displaying simulated data for S&amp;P 500, NASDAQ, and NYSE equities.
-              Connect a US market data feed (Alpha Vantage, Polygon.io, or IEX Cloud) to enable live data.
-              All scanner logic, sector heatmaps, and breadth indicators are fully functional.
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* US Indices */}
       <div>
         <h3 className="text-sm font-semibold text-foreground mb-3">US Indices</h3>
@@ -191,7 +181,7 @@ export default function USDashboard() {
                 sub={fmtPct(idx.changePercent)}
                 icon={BarChart3}
                 trend={Number(idx.changePercent) >= 0 ? "up" : "down"}
-                sparkline={generateSparklineData(16, Number(idx.changePercent) >= 0 ? "up" : "down")}
+                sparkline={sparklines?.[idx.symbol]}
               />
             ))}
           </div>

@@ -28,11 +28,8 @@ const SCAN_TYPES = [
 ];
 
 const TIMEFRAMES = [
+  // The scanner runs on daily candles from Yahoo Finance.
   { value: "1D" as const, label: "Daily" },
-  { value: "4H" as const, label: "4 Hour" },
-  { value: "1H" as const, label: "1 Hour" },
-  { value: "15M" as const, label: "15 Min" },
-  { value: "1W" as const, label: "Weekly" },
 ];
 
 type ScanType = typeof SCAN_TYPES[number]["value"];

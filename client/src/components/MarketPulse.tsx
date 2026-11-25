@@ -1,47 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
   TrendingUp, TrendingDown, Zap, AlertTriangle,
   BarChart3, Activity, Volume2, X, ChevronLeft, ChevronRight,
 } from "lucide-react";
-
-interface PulseEvent {
-  id: string;
-  type: "breakout" | "volume_spike" | "trend_change" | "alert" | "momentum";
-  symbol: string;
-  message: string;
-  timestamp: Date;
-  severity: "info" | "warning" | "success";
-}
-
-const EVENT_TEMPLATES = [
-  { type: "breakout" as const, messages: ["{symbol} broke 52-week high", "{symbol} testing resistance at ATH", "{symbol} breaking out of consolidation"], severity: "success" as const },
-  { type: "volume_spike" as const, messages: ["{symbol} volume 3x average", "{symbol} unusual volume detected", "{symbol} volume surge with price breakout"], severity: "warning" as const },
-  { type: "trend_change" as const, messages: ["{symbol} EMA crossover (bullish)", "{symbol} RSI entering oversold", "{symbol} MACD histogram turning positive"], severity: "info" as const },
-  { type: "momentum" as const, messages: ["{symbol} momentum accelerating", "{symbol} relative strength +5", "{symbol} consecutive higher highs"], severity: "success" as const },
-];
-
-const INDIA_SYMBOLS = ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "WIPRO", "ITC", "SBIN", "BAJFINANCE", "LT", "TATAMOTORS", "MARUTI"];
-const CRYPTO_SYMBOLS = ["BTC", "ETH", "SOL", "BNB", "ADA", "XRP", "DOT", "AVAX", "MATIC", "LINK"];
-const US_SYMBOLS = ["AAPL", "NVDA", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "JPM"];
-
-const ALL_SYMBOLS = [...INDIA_SYMBOLS, ...CRYPTO_SYMBOLS, ...US_SYMBOLS];
-
-function generateEvent(): PulseEvent {
-  const template = EVENT_TEMPLATES[Math.floor(Math.random() * EVENT_TEMPLATES.length)];
-  const symbol = ALL_SYMBOLS[Math.floor(Math.random() * ALL_SYMBOLS.length)];
-  const message = template.messages[Math.floor(Math.random() * template.messages.length)].replace("{symbol}", symbol);
-
-  return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    type: template.type,
-    symbol,
-    message,
-    timestamp: new Date(),
-    severity: template.severity,
-  };
-}
 
 const typeIcons: Record<string, React.ElementType> = {
   breakout: TrendingUp,
@@ -68,35 +31,13 @@ const severityBg: Record<string, string> = {
  * Events accumulate over time and auto-scroll to the latest.
  */
 export function MarketPulsePanel({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
-  const [events, setEvents] = useState<PulseEvent[]>([]);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
-
-  useEffect(() => {
-    // Generate initial batch
-    const initial = Array.from({ length: 8 }, () => {
-      const ev = generateEvent();
-      ev.timestamp = new Date(Date.now() - Math.random() * 300000); // spread over last 5 min
-      return ev;
-    }).sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-    setEvents(initial);
-
-    // Continuously add new events
-    intervalRef.current = setInterval(() => {
-      setEvents(prev => [...prev, generateEvent()]);
-    }, 5000 + Math.random() * 5000);
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
-
-  // Auto-scroll to bottom when new events arrive
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [events.length]);
+  // Real signals from the server: big movers plus live volume-spike and 52-week-high scans.
+  const { data, isLoading, isError } = trpc.global.pulse.useQuery(undefined, {
+    enabled: isOpen,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+  const events = data ?? [];
 
   return (
     <>
@@ -130,7 +71,7 @@ export function MarketPulsePanel({ isOpen, onToggle }: { isOpen: boolean; onTogg
                 <h3 className="text-xs font-bold text-foreground uppercase tracking-wider">Market Pulse</h3>
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-3xs text-muted-foreground tabular-nums">{events.length} events</span>
+                <span className="text-3xs text-muted-foreground tabular-nums">{events.length} signals</span>
                 <button
                   onClick={onToggle}
                   aria-label="Close Market Pulse panel"
@@ -142,7 +83,12 @@ export function MarketPulsePanel({ isOpen, onToggle }: { isOpen: boolean; onTogg
             </div>
 
             {/* Events stream */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
+            <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
+              {isLoading && <p className="text-2xs text-muted-foreground text-center py-6">Scanning markets...</p>}
+              {isError && <p className="text-2xs text-muted-foreground text-center py-6">Signals are unavailable right now.</p>}
+              {!isLoading && !isError && events.length === 0 && (
+                <p className="text-2xs text-muted-foreground text-center py-6">No notable signals at the moment.</p>
+              )}
               {events.map((event) => {
                 const Icon = typeIcons[event.type] || Activity;
                 return (
@@ -162,7 +108,7 @@ export function MarketPulsePanel({ isOpen, onToggle }: { isOpen: boolean; onTogg
                       <div className="flex-1 min-w-0">
                         <p className="text-2xs font-medium text-foreground leading-tight">{event.message}</p>
                         <p className="text-3xs text-muted-foreground mt-0.5">
-                          {event.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                          {event.domain.toUpperCase()} · {new Date(event.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </p>
                       </div>
                     </div>
@@ -174,7 +120,7 @@ export function MarketPulsePanel({ isOpen, onToggle }: { isOpen: boolean; onTogg
             {/* Footer */}
             <div className="border-t border-border px-3 py-2 shrink-0">
               <p className="text-3xs text-muted-foreground text-center">
-                Live market signals · Auto-updating
+                Calculated from live Yahoo Finance data · refreshes every minute
               </p>
             </div>
           </motion.aside>

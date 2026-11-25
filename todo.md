@@ -12,7 +12,7 @@
 
 ## Phase 2: Database & Backend
 - [x] Design and migrate database schema (14 tables: assets, market_data, technical_indicators, sector_performance, market_sentiment, watchlists, watchlist_items, favorite_sectors, saved_scans, alerts, alert_history, scanner_results, historical_snapshots, users)
-- [x] Build market simulation engine (generateCurrentPrice, generateMarketData, generateMarketSentiment, generateSectorPerformance, runScanner, calculateEMA, calculateRSI, calculateMomentumScore, detect* functions)
+- [x] ~~Market simulation engine~~ replaced by real-data providers (see README "Data Policy")
 - [x] Build tRPC router: market (sentiment, breadth, BTC dominance, overview, sentimentHistory)
 - [x] Build tRPC router: sectors (list, detail, heatmap, favorites, toggleFavorite)
 - [x] Build tRPC router: assets (list, search, detail, ohlcv, compare)
@@ -85,7 +85,7 @@
 - [x] Heartbeat handler: scanner processing (/api/scheduled/scanner-processing)
 - [x] Heartbeat handler: alert evaluation (/api/scheduled/alert-evaluation)
 - [x] All handlers mounted in Express before Vite fallthrough
-- [x] Cron authentication via sdk.authenticateRequest
+- [x] Cron authentication via `x-api-key` header (CRON_API_KEY, timing-safe compare)
 
 ## Phase 9: Polish & Delivery
 - [x] Responsive design (mobile + desktop)
@@ -97,7 +97,7 @@
 - [x] Final checkpoint and delivery
 
 ## Future Enhancements
-- [ ] Real market data API integration (replace simulation engine with live data)
+- [x] Real market data API integration (Yahoo Finance, Alternative.me, CoinGecko, NSE); simulation removed
 - [ ] Email alert delivery via SMTP
 - [ ] Push notifications for mobile
 - [ ] Portfolio P&L tracking

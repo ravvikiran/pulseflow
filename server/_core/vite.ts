@@ -48,20 +48,38 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath =
-    process.env.NODE_ENV === "development"
-      ? path.resolve(import.meta.dirname, "../..", "dist", "public")
-      : path.resolve(import.meta.dirname, "public");
+  // In the bundled build this file lives at dist/index.js, so assets are in
+  // dist/public. Running from source (e.g. `tsx` without NODE_ENV=development)
+  // falls back to the repo-level dist/public.
+  const bundledPath = path.resolve(import.meta.dirname, "public");
+  const distPath = fs.existsSync(bundledPath)
+    ? bundledPath
+    : path.resolve(import.meta.dirname, "../..", "dist", "public");
   if (!fs.existsSync(distPath)) {
     console.error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(
+    express.static(distPath, {
+      index: false,
+      setHeaders(res, filePath) {
+        const rel = path.relative(distPath, filePath).replace(/\\/g, "/");
+        if (rel.startsWith("assets/")) {
+          // Vite emits content-hashed filenames here, safe to cache forever.
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        } else if (rel === "sw.js" || rel === "manifest.json") {
+          // Must revalidate so service worker / manifest updates roll out.
+          res.setHeader("Cache-Control", "no-cache");
+        }
+      },
+    })
+  );
 
-  // fall through to index.html if the file doesn't exist
+  // SPA fallback: always revalidate index.html so new deploys are picked up.
   app.use("*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

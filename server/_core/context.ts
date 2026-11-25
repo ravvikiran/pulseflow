@@ -1,10 +1,5 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import { COOKIE_NAME } from "@shared/const";
-import { parse as parseCookieHeader } from "cookie";
-import { jwtVerify } from "jose";
-import { ENV } from "./env";
-import * as db from "../db";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -12,34 +7,22 @@ export type TrpcContext = {
   user: User | null;
 };
 
+/**
+ * PulseFlow is a single-user local tool with no login flow. `user` stays null
+ * here and `protectedProcedure` substitutes the default local user
+ * (see ./trpc.ts).
+ *
+ * The earlier JWT-cookie path was removed: nothing ever issued the cookie and
+ * it fell back to a hard-coded signing secret, so any client could forge a
+ * session. If real auth is added later, verify the session here using a
+ * secret loaded from validated env config.
+ */
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
-  let user: User | null = null;
-
-  try {
-    const cookies = parseCookieHeader(opts.req.headers.cookie || "");
-    const sessionCookie = cookies[COOKIE_NAME];
-
-    if (sessionCookie) {
-      const secretKey = new TextEncoder().encode(ENV.cookieSecret);
-      const { payload } = await jwtVerify(sessionCookie, secretKey, {
-        algorithms: ["HS256"],
-      });
-
-      const openId = payload.openId as string;
-      if (openId) {
-        user = (await db.getUserByOpenId(openId)) ?? null;
-      }
-    }
-  } catch {
-    // Authentication is optional for public procedures.
-    user = null;
-  }
-
   return {
     req: opts.req,
     res: opts.res,
-    user,
+    user: null,
   };
 }

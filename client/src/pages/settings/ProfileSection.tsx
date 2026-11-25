@@ -61,7 +61,7 @@ export function ProfileSection({ prefs, onUpdate, isSaving, user: userProp }: Pr
   return (
     <SettingsSection
       title="User Profile"
-      description="Manage your account information, subscription status, and connection details."
+      description="Your display name and local profile details."
       icon={User}
       accentClass="text-violet-400"
       bgClass="bg-violet-500/10"
@@ -129,7 +129,7 @@ export function ProfileSection({ prefs, onUpdate, isSaving, user: userProp }: Pr
               <div className="flex items-center gap-2">
                 <Mail className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
                 <p className="text-sm text-foreground">{user?.email ?? "Not provided"}</p>
-                <StatusBadge status="connected" label="Verified" />
+                
               </div>
             </div>
 
@@ -142,76 +142,11 @@ export function ProfileSection({ prefs, onUpdate, isSaving, user: userProp }: Pr
         </div>
       </SettingsCard>
 
-      {/* Subscription */}
-      <SettingsCard>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3.5 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-amber-500/15 rounded-xl flex items-center justify-center">
-                <Crown className="w-4.5 h-4.5 text-amber-400" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">PulseFlow Pro</p>
-                <p className="text-xs text-muted-foreground">Full access to all market modules</p>
-              </div>
-            </div>
-            <span className="text-xs bg-amber-500/15 text-amber-400 border border-amber-500/25 px-2.5 py-1 rounded-lg font-semibold">Active</span>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: "Watchlists", value: "Unlimited", sub: "assets" },
-              { label: "Alerts", value: "Unlimited", sub: "active" },
-              { label: "Scanner Presets", value: "Unlimited", sub: "saved" },
-            ].map((item) => (
-              <div key={item.label} className="bg-muted/20 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground">{item.label}</p>
-                <p className="text-sm font-bold text-foreground mt-1">{item.value}</p>
-                <p className="text-xs text-muted-foreground">{item.sub}</p>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={() => toast.info("Subscription management", { description: "Subscription management will be available in a future update." })}
-            className="w-full py-2 text-sm text-amber-400 hover:text-amber-300 border border-amber-500/25 hover:border-amber-500/40 rounded-xl transition-colors"
-          >
-            Manage Subscription
-          </button>
-        </div>
-      </SettingsCard>
-
-      {/* API & Sync Status */}
-      <SettingsCard>
-        <div className="space-y-2.5">
-          {[
-            { name: "Market Data API", status: "connected" as const, detail: "NSE & Crypto feeds active", icon: Wifi },
-            { name: "Sector Data Engine", status: "synced" as const, detail: "Last synced 3 minutes ago", icon: RefreshCw },
-            { name: "Alert Delivery", status: "connected" as const, detail: "In-app notifications active", icon: CheckCircle2 },
-            { name: "Scanner Engine", status: "synced" as const, detail: "Background jobs running", icon: RefreshCw },
-          ].map((item) => {
-            const Icon = item.icon;
-            return (
-              <div key={item.name} className="flex items-center gap-3 p-3 bg-muted/20 rounded-xl">
-                <div className="w-8 h-8 bg-muted/40 rounded-lg flex items-center justify-center shrink-0">
-                  <Icon className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">{item.name}</p>
-                  <p className="text-xs text-muted-foreground">{item.detail}</p>
-                </div>
-                <StatusBadge status={item.status} label={item.status === "connected" ? "Connected" : "Synced"} />
-              </div>
-            );
-          })}
-        </div>
-      </SettingsCard>
-
-      {/* Last Sync */}
       <div className="flex items-center gap-2 px-1">
         <Clock className="w-3.5 h-3.5 text-muted-foreground/50" />
         <p className="text-xs text-muted-foreground">
-          Last full sync: {lastSync.toLocaleString()} · Member since {new Date(user?.createdAt ?? Date.now()).toLocaleDateString()}
+          PulseFlow is a local, single-user app: there is no subscription or account to manage. Market data refreshes
+          automatically from Yahoo Finance and other public sources.
         </p>
       </div>
     </SettingsSection>

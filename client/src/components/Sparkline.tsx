@@ -93,20 +93,3 @@ export function Sparkline({
     </svg>
   );
 }
-
-/**
- * Generate mock sparkline data (for demo/loading states)
- */
-export function generateSparklineData(length: number = 20, trend: "up" | "down" | "neutral" = "neutral"): number[] {
-  const data: number[] = [];
-  let value = 50 + Math.random() * 50;
-
-  for (let i = 0; i < length; i++) {
-    const trendBias = trend === "up" ? 0.3 : trend === "down" ? -0.3 : 0;
-    value += (Math.random() - 0.5 + trendBias) * 5;
-    value = Math.max(10, Math.min(100, value));
-    data.push(value);
-  }
-
-  return data;
-}
