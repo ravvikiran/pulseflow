@@ -21,7 +21,8 @@ export async function setupVite(app: Express, server: Server) {
   });
 
   app.use(vite.middlewares);
-  app.use("*", async (req, res, next) => {
+  // Pathless middleware matches every remaining request (Express 5 no longer accepts a bare "*").
+  app.use(async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
@@ -78,7 +79,7 @@ export function serveStatic(app: Express) {
   );
 
   // SPA fallback: always revalidate index.html so new deploys are picked up.
-  app.use("*", (_req, res) => {
+  app.use((_req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.resolve(distPath, "index.html"));
   });

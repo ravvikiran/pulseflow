@@ -93,7 +93,7 @@ function FiiDiiWidget({ date, fii, dii }: { date: string | null; fii: Flow; dii:
             <YAxis tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
             <Tooltip
               contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: 6, fontSize: 11 }}
-              formatter={(v: number) => [fmtCrore(v), ""]}
+              formatter={(v) => [fmtCrore(Number(v)), ""]}
             />
             <Bar dataKey="Buy" fill="var(--color-bull)" radius={[2, 2, 0, 0]} />
             <Bar dataKey="Sell" fill="var(--color-bear)" radius={[2, 2, 0, 0]} />

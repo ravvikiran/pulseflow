@@ -215,11 +215,11 @@ export default function IndiaSectors() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={inflowData} layout="vertical" margin={{ left: 60, right: 20 }}>
                 <XAxis type="number" tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}B`} />
+                  tickFormatter={(v) => `${Math.round(Number(v)).toLocaleString("en-IN")}`} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }} width={55} />
                 <Tooltip
                   contentStyle={{ background: "var(--color-surface-2)", border: "1px solid var(--color-border)", borderRadius: 6, fontSize: 11 }}
-                  formatter={(v: number) => [`${(v / 1000).toFixed(2)}B`, "Net Flow"]}
+                  formatter={(v) => [`₹${Math.round(Number(v)).toLocaleString("en-IN")} Cr`, "Net Flow"]}
                 />
                 <Bar dataKey="inflow" radius={[0, 3, 3, 0]}>
                   {inflowData.map((entry, index) => (

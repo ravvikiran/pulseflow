@@ -100,6 +100,19 @@ ${colorConfig
   );
 };
 
+// Recharts 3 no longer puts `payload` / `label` on the Tooltip and Legend component props,
+// so the content components declare the shape they read.
+type ChartPayloadItem = {
+  type?: string;
+  value?: any;
+  name?: any;
+  dataKey?: any;
+  color?: string;
+  fill?: string;
+  payload?: any;
+  [key: string]: any;
+};
+
 const ChartTooltip = RechartsPrimitive.Tooltip;
 
 function ChartTooltipContent({
@@ -118,6 +131,8 @@ function ChartTooltipContent({
   labelKey,
 }: React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
   React.ComponentProps<"div"> & {
+    payload?: ChartPayloadItem[];
+    label?: React.ReactNode;
     hideLabel?: boolean;
     hideIndicator?: boolean;
     indicator?: "line" | "dot" | "dashed";
@@ -142,7 +157,7 @@ function ChartTooltipContent({
     if (labelFormatter) {
       return (
         <div className={cn("font-medium", labelClassName)}>
-          {labelFormatter(value, payload)}
+          {labelFormatter(value, payload as any)}
         </div>
       );
     }
@@ -193,7 +208,7 @@ function ChartTooltipContent({
                 )}
               >
                 {formatter && item?.value !== undefined && item.name ? (
-                  formatter(item.value, item.name, item, index, item.payload)
+                  formatter(item.value, item.name, item as any, index, item.payload)
                 ) : (
                   <>
                     {itemConfig?.icon ? (
@@ -256,8 +271,9 @@ function ChartLegendContent({
   payload,
   verticalAlign = "bottom",
   nameKey,
-}: React.ComponentProps<"div"> &
-  Pick<RechartsPrimitive.LegendProps, "payload" | "verticalAlign"> & {
+}: React.ComponentProps<"div"> & {
+    payload?: ChartPayloadItem[];
+    verticalAlign?: "top" | "middle" | "bottom";
     hideIcon?: boolean;
     nameKey?: string;
   }) {

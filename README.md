@@ -23,11 +23,11 @@ A real-time financial market intelligence platform providing technical analysis,
 |-------|-----------|
 | Frontend | React 19, Tailwind CSS 4, Wouter, lightweight-charts, Recharts |
 | UI | shadcn/ui (Radix primitives), Lucide icons, Framer Motion |
-| API | tRPC 11 (type-safe, end-to-end) over Express 4 |
-| Data | Yahoo Finance (`yahoo-finance2` v3) |
+| API | tRPC 11 (type-safe, end-to-end) over Express 5 |
+| Data | Yahoo Finance (`yahoo-finance2` v4) |
 | Database | MySQL via Drizzle ORM (optional — works without) |
 | Auth | None (single-user local tool). Do not expose publicly without adding auth |
-| Build | Vite 7 + esbuild, pnpm |
+| Build | Vite 8 (Rolldown) + esbuild, TypeScript 7, Vitest 5, pnpm |
 
 ---
 
@@ -35,7 +35,7 @@ A real-time financial market intelligence platform providing technical analysis,
 
 ### Prerequisites
 
-- **Node.js 20.19+** (22 recommended, see `.nvmrc`)
+- **Node.js 22.12+** (see `.nvmrc`; required by Vite 8, Vitest 5 and yahoo-finance2)
 - **pnpm** (required — `npm install -g pnpm`)
 - **MySQL** (optional — app works fully without database using live Yahoo data)
 

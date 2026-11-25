@@ -17,21 +17,18 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
-    rollupOptions: {
+    // Vite 8 bundles with Rolldown. Vendor libraries are split into stable,
+    // separately cached chunks; everything else is split per route (lazy pages).
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom"],
-          "vendor-motion": ["framer-motion"],
-          "vendor-charts": ["recharts", "lightweight-charts"],
-          "vendor-radix": [
-            "@radix-ui/react-dialog",
-            "@radix-ui/react-dropdown-menu",
-            "@radix-ui/react-popover",
-            "@radix-ui/react-select",
-            "@radix-ui/react-tabs",
-            "@radix-ui/react-tooltip",
+        advancedChunks: {
+          groups: [
+            { name: "vendor-react", test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 40 },
+            { name: "vendor-motion", test: /node_modules[\\/](framer-motion|motion-dom|motion-utils)[\\/]/, priority: 30 },
+            { name: "vendor-charts", test: /node_modules[\\/](recharts|lightweight-charts|victory-vendor|d3-[^\\/]+|fancy-canvas)[\\/]/, priority: 30 },
+            { name: "vendor-radix", test: /node_modules[\\/]@radix-ui[\\/]/, priority: 20 },
+            { name: "vendor-query", test: /node_modules[\\/](@tanstack|@trpc|superjson)[\\/]/, priority: 20 },
           ],
-          "vendor-query": ["@tanstack/react-query", "@trpc/client", "@trpc/react-query"],
         },
       },
     },
