@@ -1,3 +1,4 @@
+import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { ShieldCheck, TrendingUp, AlertTriangle, HelpCircle } from "lucide-react";
@@ -130,7 +131,17 @@ export function StrategyReliabilityPanel({
     ? rows.filter(r => filterScanTypes.some(f => r.scanType === f || r.scanType.split("+").includes(f)))
     : rows;
 
-  if (isLoading) return null;
+  // Reserve roughly the loaded height so the content below does not jump when data arrives.
+  if (isLoading) {
+    return compact
+      ? <Skeleton className="h-[136px] w-full rounded-lg" aria-hidden />
+      : (
+        <div className="space-y-2" aria-hidden>
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-[150px] w-full rounded-lg" />
+        </div>
+      );
+  }
   if (filtered.length === 0) {
     if (compact) {
       return (

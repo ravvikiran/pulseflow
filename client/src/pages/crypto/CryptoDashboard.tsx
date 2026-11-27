@@ -1,3 +1,4 @@
+import { MarketStatusPill } from "@/components/MarketStatus";
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -77,7 +78,7 @@ function DominanceRing({ btc, eth }: { btc: number; eth: number }) {
           strokeDasharray={`${btcDash} ${circ - btcDash}`} strokeDashoffset="0" />
         <circle cx="18" cy="18" r={r} fill="none" stroke="var(--color-primary)" strokeWidth="3"
           strokeDasharray={`${ethDash} ${circ - ethDash}`} strokeDashoffset={-btcDash} />
-        <circle cx="18" cy="18" r={r} fill="none" stroke="oklch(0.55 0.12 280)" strokeWidth="3"
+        <circle cx="18" cy="18" r={r} fill="none" stroke="oklch(0.72 0.12 280)" strokeWidth="3"
           strokeDasharray={`${altDash} ${circ - altDash}`} strokeDashoffset={-(btcDash + ethDash)} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -122,11 +123,11 @@ function CryptoHeatCell({ symbol, name, change, price }: { symbol: string; name:
     <Link href={`/assets/${symbol}`}>
       <div className="heatmap-cell p-2 min-h-[72px] cursor-pointer"
         style={{ background: bg, border: `1px solid ${change >= 0 ? "oklch(0.68 0.18 155 / 0.2)" : "oklch(0.58 0.22 25 / 0.2)"}` }}>
-        <div className="text-2xs font-bold text-foreground/80 uppercase">{symbol}</div>
-        <div className={cn("text-sm font-bold tabular-nums mt-0.5", change >= 0 ? "text-bull" : "text-bear")}>
+        <div className="text-2xs font-bold text-foreground uppercase">{symbol}</div>
+        <div className="text-sm font-bold tabular-nums mt-0.5 text-foreground">
           {fmtPct(change)}
         </div>
-        <div className="text-3xs text-muted-foreground truncate">{name.split(" ")[0]}</div>
+        <div className="text-3xs text-foreground truncate">{name.split(" ")[0]}</div>
       </div>
     </Link>
   );
@@ -180,7 +181,7 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function CryptoDashboard() {
   const [tab, setTab] = useState<"gainers" | "losers" | "altcoin">("gainers");
 
-  const { data, isLoading, isError, refetch, isFetching } = trpc.crypto.dashboard.useQuery(undefined, {
+  const { data, isLoading, isError, refetch, isFetching, dataUpdatedAt } = trpc.crypto.dashboard.useQuery(undefined, {
     refetchInterval: 60000,
   });
   const { data: heatmapData, isLoading: heatLoading } = trpc.crypto.heatmap.useQuery(undefined, {
@@ -208,12 +209,11 @@ export default function CryptoDashboard() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 rounded-full bg-bull pulse-live" />
-            <span className="text-2xs uppercase tracking-widest text-bull font-semibold">Crypto Market</span>
+            <MarketStatusPill market="crypto" className="text-muted-foreground" />
           </div>
           <h1 className="text-xl font-bold text-foreground">Crypto Market Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Bitcoin, Altcoins, DeFi — Crypto assets only · {new Date().toLocaleTimeString()}
+            Bitcoin, Altcoins, DeFi — Crypto assets only{dataUpdatedAt ? ` · Updated ${new Date(dataUpdatedAt).toLocaleTimeString()}` : ""}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -267,7 +267,6 @@ export default function CryptoDashboard() {
         <div className="pf-card p-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-foreground">Fear & Greed Index</h3>
-            <div className="w-1.5 h-1.5 rounded-full bg-bull pulse-live" />
           </div>
           {isLoading ? (
             <div className="flex justify-center py-8"><Skeleton className="w-36 h-24 rounded" /></div>
@@ -303,7 +302,7 @@ export default function CryptoDashboard() {
             {[
               { label: "Bitcoin (BTC)", pct: data.btcDominance, color: "var(--color-bull)" },
               { label: "Ethereum (ETH)", pct: data.ethDominance, color: "var(--color-primary)" },
-              { label: "Altcoins", pct: Math.max(0, 100 - data.btcDominance - data.ethDominance), color: "oklch(0.55 0.12 280)" },
+              { label: "Altcoins", pct: Math.max(0, 100 - data.btcDominance - data.ethDominance), color: "oklch(0.72 0.12 280)" },
             ].map(({ label, pct, color }) => (
               <div key={label} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
@@ -372,7 +371,7 @@ export default function CryptoDashboard() {
                 <button key={t} onClick={() => setTab(t)}
                   aria-pressed={tab === t}
                   className={cn("px-2.5 py-1 rounded text-2xs font-medium transition-colors capitalize focus-ring min-h-[32px]",
-                    tab === t ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
+                    tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}>
                   {t === "altcoin" ? "Altcoin RS" : t === "gainers" ? "Top Gainers" : "Top Losers"}
                 </button>
               ))}

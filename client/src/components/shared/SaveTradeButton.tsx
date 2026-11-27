@@ -71,7 +71,7 @@ export function SaveTradeButton({ result, defaultMarket = "india", defaultExchan
         <button
           onClick={handleSave}
           disabled={saveMutation.isPending}
-          className="text-3xs px-2 py-0.5 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors focus-ring disabled:opacity-50"
+          className="text-3xs px-2 py-0.5 min-h-6 inline-flex items-center whitespace-nowrap shrink-0 rounded bg-primary/10 text-primary hover:bg-primary/20 font-medium transition-colors focus-ring disabled:opacity-50"
         >
           {saveMutation.isPending ? "Saving..." : "📌 Save Trade"}
         </button>

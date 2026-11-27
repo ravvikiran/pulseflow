@@ -168,7 +168,7 @@ function WatchlistDetail({ watchlistId }: { watchlistId: number }) {
       {/* Items */}
       {!data.items || data.items.length === 0 ? (
         <StateView
-          icon={<Bookmark className="w-10 h-10 text-muted-foreground/30" />}
+          icon={<Bookmark className="w-10 h-10 text-muted-foreground" />}
           title="No assets in this watchlist"
           description={'Click "Add Asset" to get started.'}
         />
@@ -247,7 +247,7 @@ export default function Watchlists() {
       <div className="p-4 lg:p-6 min-h-[60vh] flex items-center justify-center">
         <StateView
           size="lg"
-          icon={<Bookmark className="w-16 h-16 text-muted-foreground/20" />}
+          icon={<Bookmark className="w-16 h-16 text-muted-foreground" />}
           title="Sign in to manage watchlists"
           description="Create custom watchlists, track your favorite assets, and get personalized market insights."
           action={<a href={getLoginUrl()}><Button className="gap-2">Sign In to PulseFlow</Button></a>}
@@ -308,7 +308,7 @@ export default function Watchlists() {
             <div className="pf-card">
               <StateView
                 size="sm"
-                icon={<List className="w-8 h-8 text-muted-foreground/30" />}
+                icon={<List className="w-8 h-8 text-muted-foreground" />}
                 title="No watchlists yet"
               />
             </div>
@@ -332,7 +332,7 @@ export default function Watchlists() {
           ) : (
             <StateView
               size="lg"
-              icon={<List className="w-12 h-12 text-muted-foreground/20" />}
+              icon={<List className="w-12 h-12 text-muted-foreground" />}
               title="Select a watchlist to view assets"
             />
           )}

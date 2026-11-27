@@ -394,14 +394,14 @@ function AssetList() {
             <button
               key={t}
               onClick={() => setAssetType(t)}
-              className={cn("px-2.5 py-1 rounded text-xs font-medium transition-colors capitalize", assetType === t ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground")}
+              className={cn("px-2.5 py-1 rounded text-xs font-medium transition-colors capitalize", assetType === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}
             >
               {t === "All" ? "All Types" : t === "stock" ? "NSE Stocks" : t === "crypto" ? "Crypto" : "Indices"}
             </button>
           ))}
         </div>
         <Select value={sector} onValueChange={setSector}>
-          <SelectTrigger className="h-8 text-xs w-40 bg-muted border-border">
+          <SelectTrigger aria-label="Filter by sector" className="h-8 text-xs w-40 bg-muted border-border">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

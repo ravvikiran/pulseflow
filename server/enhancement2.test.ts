@@ -208,6 +208,13 @@ describe("patternEngine", () => {
     }
   });
 
+  it("stamps results with the date of the last candle, not the scan time", () => {
+    const candles = Array.from({ length: 120 }, (_, i) => candle(i, 100 + Math.sin(i / 6) * 8 + i * 0.1, 1000 + (i % 7) * 100));
+    const lastTs = candles[candles.length - 1].timestamp;
+    const results = patternEngine.detectPatternsOnCandles(candles, "FIXTURE", { minConfidence: 0, maxResultsPerAsset: 5 });
+    for (const r of results) expect(r.detectedAt).toBe(lastTs);
+  });
+
   it("PATTERN_NAMES has entries for all 14 pattern types", () => {
     const expectedPatterns = [
       "ascending_triangle", "descending_triangle", "symmetrical_triangle",
@@ -254,7 +261,13 @@ describe("runRealScanner", () => {
 // ─── Global Router Pattern & Validation Tests ─────────────────────────────────
 describe("global router", () => {
   describe("patterns", () => {
-    it("returns pattern results for all markets", async () => {
+    it("returns pattern results for all markets, each tagged with its real market", async () => {
+      const { CRYPTO_REGISTRY, NSE_REGISTRY, US_REGISTRY } = await import("./assetRegistry");
+      const expected = new Map<string, string>([
+        ...NSE_REGISTRY.map(a => [a.symbol, "india"] as [string, string]),
+        ...CRYPTO_REGISTRY.map(a => [a.symbol, "crypto"] as [string, string]),
+        ...US_REGISTRY.map(a => [a.symbol, "us"] as [string, string]),
+      ]);
       const caller = appRouter.createCaller(createAnonContext());
       const result = await caller.global.patterns({
         market: "all",
@@ -262,7 +275,13 @@ describe("global router", () => {
         minConfidence: 50,
       });
       expect(Array.isArray(result)).toBe(true);
-    });
+      for (const r of result) {
+        // The market comes from the registry, never from a guess about the symbol.
+        expect(r.market).toBe(expected.get(r.symbol));
+        // detectedAt is the analysed candle, so it can never be "now".
+        expect(r.detectedAt).toBeLessThan(Date.now() - 60_000);
+      }
+    }, 120000);
 
     it("returns pattern results for india only", async () => {
       const caller = appRouter.createCaller(createAnonContext());

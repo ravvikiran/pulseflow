@@ -87,7 +87,7 @@ function PresetFormCard({
           value={form.name}
           onChange={(e) => set("name", e.target.value)}
           placeholder="e.g. Swing Trade Setup"
-          className="w-full bg-background border border-border/60 rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500/50 placeholder:text-muted-foreground/50"
+          className="w-full bg-background border border-border/60 rounded-lg px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-cyan-500/50 placeholder:text-muted-foreground"
         />
       </div>
 
@@ -274,9 +274,9 @@ export function ScannerConfigSection({ prefs, presets, onUpdate, onPresetsChange
         {/* Preset cards */}
         {presets.length === 0 && !showCreateForm && (
           <div className="bg-card/30 border border-border/40 rounded-xl p-8 text-center">
-            <ScanSearch className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+            <ScanSearch className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">No scanner presets yet.</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Create your first preset to save custom scanner configurations.</p>
+            <p className="text-xs text-muted-foreground mt-1">Create your first preset to save custom scanner configurations.</p>
           </div>
         )}
 
@@ -390,7 +390,7 @@ export function ScannerConfigSection({ prefs, presets, onUpdate, onPresetsChange
                       { label: "RS Max", value: preset.config.rsMax },
                     ].map((item) => (
                       <div key={item.label} className="bg-muted/30 rounded-lg p-2">
-                        <p className="text-muted-foreground/70">{item.label}</p>
+                        <p className="text-muted-foreground">{item.label}</p>
                         <p className="font-semibold text-foreground mt-0.5">{item.value}</p>
                       </div>
                     ))}

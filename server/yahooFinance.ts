@@ -274,29 +274,19 @@ export async function getQuote(symbol: string): Promise<QuoteResult | null> {
   }
 }
 
-/**
- * Get quotes for multiple symbols (batched)
- */
-export async function getQuotes(symbols: string[]): Promise<Map<string, QuoteResult>> {
+// Quotes younger than QUOTE_CACHE_MS are "fresh". Older ones, up to QUOTE_STALE_MS, are still
+// served instantly while a background refresh runs (stale-while-revalidate). Stock quotes are
+// already ~15 minutes delayed upstream, so a minute or two of extra age is invisible, whereas
+// waiting ~10s for ~100 live quotes after an idle minute made the Home page feel broken.
+const QUOTE_STALE_MS = 15 * 60 * 1000;
+const refreshing = new Set<string>();
+
+/** Fetch live quotes in small batches and store them in the cache. Symbols Yahoo has no data for are absent. */
+async function fetchQuoteBatches(symbols: string[]): Promise<Map<string, QuoteResult>> {
   const results = new Map<string, QuoteResult>();
-  const uncached: string[] = [];
-
-  // Return cached results first
-  for (const symbol of symbols) {
-    const cached = getCached(quoteCache, symbol, QUOTE_CACHE_MS);
-    if (cached) {
-      results.set(symbol, cached);
-    } else {
-      uncached.push(symbol);
-    }
-  }
-
-  if (uncached.length === 0) return results;
-
-  // Fetch uncached in batches of 10 to avoid rate limits
-  const batchSize = 10;
-  for (let i = 0; i < uncached.length; i += batchSize) {
-    const batch = uncached.slice(i, i + batchSize);
+  const batchSize = 10; // small batches to stay within free-tier rate limits
+  for (let i = 0; i < symbols.length; i += batchSize) {
+    const batch = symbols.slice(i, i + batchSize);
     const yahooTickers = batch.map(toYahooSymbol);
     // Yahoo omits unknown/delisted tickers from the response, so results must
     // be matched by ticker rather than by array index.
@@ -333,14 +323,52 @@ export async function getQuotes(symbols: string[]): Promise<Map<string, QuoteRes
     }
 
     // Small delay between batches to avoid rate limiting
-    if (i + batchSize < uncached.length) {
+    if (i + batchSize < symbols.length) {
       await new Promise(r => setTimeout(r, 200));
     }
   }
-
   return results;
 }
 
+/** Refresh symbols without making the caller wait. At most one refresh per symbol runs at a time. */
+function refreshQuotesInBackground(symbols: string[]): void {
+  const todo = symbols.filter(s => !refreshing.has(s));
+  if (todo.length === 0) return;
+  todo.forEach(s => refreshing.add(s));
+  void fetchQuoteBatches(todo)
+    .catch(() => undefined)
+    .finally(() => todo.forEach(s => refreshing.delete(s)));
+}
+
+/**
+ * Get quotes for multiple symbols. Fresh cache hits and slightly stale hits return immediately
+ * (stale ones refresh in the background); only symbols with no usable cache entry wait for Yahoo.
+ */
+export async function getQuotes(symbols: string[]): Promise<Map<string, QuoteResult>> {
+  const results = new Map<string, QuoteResult>();
+  const missing: string[] = [];
+  const stale: string[] = [];
+  const now = Date.now();
+
+  for (const symbol of symbols) {
+    const entry = quoteCache.get(symbol);
+    const age = entry ? now - entry.timestamp : Infinity;
+    if (entry && age <= QUOTE_CACHE_MS) {
+      results.set(symbol, entry.data);
+    } else if (entry && age <= QUOTE_STALE_MS) {
+      results.set(symbol, entry.data);
+      stale.push(symbol);
+    } else {
+      missing.push(symbol);
+    }
+  }
+
+  if (stale.length > 0) refreshQuotesInBackground(stale);
+  if (missing.length > 0) {
+    for (const [symbol, quote] of await fetchQuoteBatches(missing)) results.set(symbol, quote);
+  }
+  return results;
+}
 /**
  * Get historical OHLCV data for a symbol
  */
@@ -523,4 +551,68 @@ export async function getRealPrices(symbols: string[]): Promise<Map<string, {
   }
 
   return results;
+}
+
+// ─── Market status ────────────────────────────────────────────────────────────
+
+export type SessionState = "open" | "pre" | "post" | "closed";
+
+export interface MarketSession {
+  state: SessionState;
+  /** Time of the most recent trade Yahoo has for the benchmark, ISO string. */
+  lastTradeAt: string | null;
+}
+
+export interface MarketStatus {
+  india: MarketSession;
+  us: MarketSession;
+  crypto: MarketSession;
+}
+
+// Benchmarks whose Yahoo `marketState` reflects each venue, including exchange holidays.
+const STATUS_BENCHMARKS = { india: "^NSEI", us: "^GSPC", crypto: "BTC-USD" } as const;
+const STATUS_CACHE_MS = 60 * 1000;
+let statusCache: { at: number; value: MarketStatus } | null = null;
+
+function toSessionState(raw: unknown): SessionState {
+  switch (String(raw ?? "").toUpperCase()) {
+    case "REGULAR": return "open";
+    case "PRE":
+    case "PREPRE": return "pre";
+    case "POST":
+    case "POSTPOST": return "post";
+    default: return "closed";
+  }
+}
+
+/**
+ * Real open/closed state for the three markets, straight from Yahoo's exchange
+ * data (so holidays are respected). Returns null when Yahoo can't be reached.
+ */
+export async function getMarketStatus(): Promise<MarketStatus | null> {
+  if (statusCache && Date.now() - statusCache.at < STATUS_CACHE_MS) return statusCache.value;
+  try {
+    const symbols = Object.values(STATUS_BENCHMARKS);
+    const raw = await yahooCall(() => yahooFinance.quote(symbols), QUOTE_TIMEOUT_MS, "market status");
+    const list = Array.isArray(raw) ? raw : [raw];
+    const bySymbol = new Map(list.map(q => [String(q.symbol), q]));
+    const session = (symbol: string): MarketSession => {
+      const q = bySymbol.get(symbol) as { marketState?: string; regularMarketTime?: Date } | undefined;
+      return {
+        state: toSessionState(q?.marketState),
+        lastTradeAt: q?.regularMarketTime ? new Date(q.regularMarketTime).toISOString() : null,
+      };
+    };
+    if (!symbols.some(s => bySymbol.has(s))) return null;
+    const value: MarketStatus = {
+      india: session(STATUS_BENCHMARKS.india),
+      us: session(STATUS_BENCHMARKS.us),
+      crypto: session(STATUS_BENCHMARKS.crypto),
+    };
+    statusCache = { at: Date.now(), value };
+    return value;
+  } catch (error) {
+    warnOnce("market-status", `[Yahoo] Market status unavailable: ${(error as Error).message}`);
+    return statusCache?.value ?? null;
+  }
 }

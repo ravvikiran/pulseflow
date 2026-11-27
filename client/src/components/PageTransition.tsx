@@ -1,30 +1,13 @@
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 
+// Short and cheap: a quick fade with a small rise on enter, a faster fade on exit.
+// (Previously 300ms in + 300ms out with a blur filter, about 0.6s before each page showed.)
 const pageVariants = {
-  initial: {
-    opacity: 0,
-    y: 12,
-    filter: "blur(4px)",
-  },
-  animate: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-  },
-  exit: {
-    opacity: 0,
-    y: -8,
-    filter: "blur(2px)",
-  },
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0, transition: { type: "tween" as const, ease: [0.2, 0, 0, 1] as [number, number, number, number], duration: 0.18 } },
+  exit: { opacity: 0, transition: { type: "tween" as const, ease: "easeIn" as const, duration: 0.08 } },
 };
-
-const pageTransition = {
-  type: "tween" as const,
-  ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number],
-  duration: 0.3,
-};
-
 export function PageTransition({ children }: { children: ReactNode }) {
   return (
     <motion.div
@@ -32,7 +15,6 @@ export function PageTransition({ children }: { children: ReactNode }) {
       animate="animate"
       exit="exit"
       variants={pageVariants}
-      transition={pageTransition}
       className="h-full"
     >
       {children}

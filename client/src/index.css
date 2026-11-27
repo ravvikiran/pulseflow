@@ -20,8 +20,8 @@
   --color-popover-foreground:oklch(0.93 0.008 240);
 
   /* Brand — electric blue */
-  --color-primary:           oklch(0.60 0.20 250);
-  --color-primary-foreground:oklch(0.98 0.005 250);
+  --color-primary:           oklch(0.66 0.17 250);
+  --color-primary-foreground:oklch(0.14 0.020 250);  /* dark text on the bright accent: 5.1:1 (white was 3.7:1) */
 
   /* Secondary — muted slate */
   --color-secondary:         oklch(0.18 0.012 250);
@@ -29,7 +29,7 @@
 
   /* Muted */
   --color-muted:             oklch(0.16 0.010 250);
-  --color-muted-foreground:  oklch(0.55 0.010 240);
+  --color-muted-foreground:  oklch(0.66 0.010 240);   /* 5.8:1 on the lightest surface (was 3.7:1) */
 
   /* Accent — teal highlight */
   --color-accent:            oklch(0.22 0.018 250);
@@ -40,18 +40,18 @@
   --color-destructive-foreground: oklch(0.98 0.005 25);
   --color-border:            oklch(0.22 0.012 250);
   --color-input:             oklch(0.18 0.012 250);
-  --color-ring:              oklch(0.60 0.20 250);
+  --color-ring:              oklch(0.66 0.17 250);
 
   /* Chart colors */
-  --color-chart-1:           oklch(0.60 0.20 250);
+  --color-chart-1:           oklch(0.66 0.17 250);
   --color-chart-2:           oklch(0.68 0.18 160);
   --color-chart-3:           oklch(0.72 0.18 80);
   --color-chart-4:           oklch(0.62 0.22 300);
   --color-chart-5:           oklch(0.65 0.20 30);
 
   /* PulseFlow custom tokens */
-  --color-bull:              oklch(0.68 0.18 155);   /* green */
-  --color-bear:              oklch(0.58 0.22 25);    /* red */
+  --color-bull:              oklch(0.72 0.18 155);   /* green */
+  --color-bear:              oklch(0.72 0.18 25);    /* red; 4.7:1 as text on its own tinted pill (was 2.9:1) */
   --color-neutral:           oklch(0.65 0.12 80);    /* amber */
 
   /* ── Semantic intent aliases ──
@@ -66,10 +66,10 @@
   /* ── Type scale extension ──
      The base scale is text-xs..text-2xl. Dense financial tables need
      sub-xs sizes; give them named tokens instead of ad-hoc text-[Npx]. */
-  --text-3xs: 0.5625rem;   /* 9px  — micro labels, dense table meta */
-  --text-3xs--line-height: 0.875rem;
-  --text-2xs: 0.625rem;    /* 10px — captions, badges, table headers */
-  --text-2xs--line-height: 0.9375rem;
+  --text-3xs: 0.6875rem;   /* 11px — smallest text in the app (was 9px) */
+  --text-3xs--line-height: 1rem;
+  --text-2xs: 0.6875rem;   /* 11px — captions, badges, table headers (was 10px) */
+  --text-2xs--line-height: 1rem;
   --color-surface:           oklch(0.13 0.012 250);
   --color-surface-2:         oklch(0.16 0.012 250);
   --color-surface-3:         oklch(0.20 0.012 250);
@@ -78,16 +78,16 @@
   /* Sidebar */
   --color-sidebar:           oklch(0.11 0.010 250);
   --color-sidebar-foreground:oklch(0.80 0.008 240);
-  --color-sidebar-primary:   oklch(0.60 0.20 250);
-  --color-sidebar-primary-foreground: oklch(0.98 0.005 250);
+  --color-sidebar-primary:   oklch(0.66 0.17 250);
+  --color-sidebar-primary-foreground: oklch(0.14 0.020 250);
   --color-sidebar-accent:    oklch(0.18 0.012 250);
   --color-sidebar-accent-foreground: oklch(0.93 0.008 240);
   --color-sidebar-border:    oklch(0.18 0.010 250);
   --color-sidebar-ring:      oklch(0.60 0.20 250);
 
   /* Typography */
-  --font-sans: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
 }
 
 /* ─── Base layer ─── */
@@ -136,6 +136,26 @@
 
   /* Monospace for numbers */
   .tabular-nums { font-variant-numeric: tabular-nums; }
+
+  /* Visible keyboard focus everywhere. Components that draw their own ring (.focus-ring,
+     focus-visible:ring-*) override this because utilities sit above the base layer. */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  /* Touch screens: controls get a finger-sized hit area (WCAG 2.2 AA asks for 24px, Apple
+     and Material for 44px). Switches keep their shape; they are enlarged in the component. */
+  @media (pointer: coarse) {
+    button:not([role="switch"]),
+    [role="button"],
+    [role="tab"],
+    [role="combobox"],
+    select,
+    summary {
+      min-height: 44px;
+    }
+  }
 }
 
 /* ─── Utility classes ─── */

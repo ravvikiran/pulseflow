@@ -1,4 +1,4 @@
-import React from "react";
+import React, { createContext, useContext, useId } from "react";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 
@@ -40,6 +40,10 @@ export function SettingsSection({
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
+// Each SettingsRow publishes the id of its visible label so the control inside it
+// (switch, select, input) is named by that text for screen readers.
+const RowLabelContext = createContext<string | undefined>(undefined);
+
 interface SettingsRowProps {
   label: string;
   description?: string;
@@ -48,13 +52,16 @@ interface SettingsRowProps {
 }
 
 export function SettingsRow({ label, description, children, className }: SettingsRowProps) {
+  const labelId = useId();
   return (
     <div className={cn("flex items-start justify-between gap-6 py-3.5 border-b border-border/30 last:border-0", className)}>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p id={labelId} className="text-sm font-medium text-foreground">{label}</p>
         {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
       </div>
-      <div className="shrink-0">{children}</div>
+      <div className="shrink-0">
+        <RowLabelContext.Provider value={labelId}>{children}</RowLabelContext.Provider>
+      </div>
     </div>
   );
 }
@@ -78,25 +85,31 @@ interface ToggleProps {
   onChange: (val: boolean) => void;
   disabled?: boolean;
   accentClass?: string;
+  /** Needed only when the toggle is not inside a SettingsRow. */
+  "aria-label"?: string;
 }
 
-export function Toggle({ checked, onChange, disabled, accentClass = "bg-indigo-500" }: ToggleProps) {
+export function Toggle({ checked, onChange, disabled, accentClass = "bg-indigo-500", "aria-label": ariaLabel }: ToggleProps) {
+  const labelledBy = useContext(RowLabelContext);
   return (
     <button
+      type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabel ? undefined : labelledBy}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        "relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
+        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
         checked ? accentClass : "bg-muted",
         disabled && "opacity-50 cursor-not-allowed"
       )}
     >
       <span
         className={cn(
-          "inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200",
-          checked ? "translate-x-4.5" : "translate-x-0.5"
+          "inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200",
+          checked ? "translate-x-[22px]" : "translate-x-0.5"
         )}
       />
     </button>
@@ -110,11 +123,15 @@ interface SelectFieldProps {
   options: { value: string; label: string }[];
   disabled?: boolean;
   className?: string;
+  "aria-label"?: string;
 }
 
-export function SelectField({ value, onChange, options, disabled, className }: SelectFieldProps) {
+export function SelectField({ value, onChange, options, disabled, className, "aria-label": ariaLabel }: SelectFieldProps) {
+  const labelledBy = useContext(RowLabelContext);
   return (
     <select
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabel ? undefined : labelledBy}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
@@ -142,13 +159,17 @@ interface NumberInputProps {
   step?: number;
   suffix?: string;
   disabled?: boolean;
+  "aria-label"?: string;
 }
 
-export function NumberInput({ value, onChange, min, max, step = 1, suffix, disabled }: NumberInputProps) {
+export function NumberInput({ value, onChange, min, max, step = 1, suffix, disabled, "aria-label": ariaLabel }: NumberInputProps) {
+  const labelledBy = useContext(RowLabelContext);
   return (
     <div className="flex items-center gap-2">
       <input
         type="number"
+        aria-label={ariaLabel}
+        aria-labelledby={ariaLabel ? undefined : labelledBy}
         value={value}
         min={min}
         max={max}
@@ -176,19 +197,23 @@ interface TextInputProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  "aria-label"?: string;
 }
 
-export function TextInput({ value, onChange, placeholder, disabled, className }: TextInputProps) {
+export function TextInput({ value, onChange, placeholder, disabled, className, "aria-label": ariaLabel }: TextInputProps) {
+  const labelledBy = useContext(RowLabelContext);
   return (
     <input
       type="text"
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabel ? undefined : labelledBy}
       value={value}
       placeholder={placeholder}
       disabled={disabled}
       onChange={(e) => onChange(e.target.value)}
       className={cn(
         "bg-background border border-border/60 rounded-lg px-3 py-1.5 text-sm text-foreground",
-        "focus:outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-muted-foreground/50",
+        "focus:outline-none focus:ring-2 focus:ring-indigo-500/50 placeholder:text-muted-foreground",
         "transition-colors w-56",
         disabled && "opacity-50 cursor-not-allowed",
         className
@@ -214,6 +239,8 @@ export function SensitivitySlider({ value, onChange }: SensitivitySliderProps) {
         {levels.map((level, i) => (
           <button
             key={level}
+            type="button"
+            aria-pressed={value === level}
             onClick={() => onChange(level)}
             className={cn(
               "px-3 py-1 rounded-md text-xs font-medium transition-all border",

@@ -71,7 +71,7 @@ export function AlertsSection({ prefs, onUpdate, isSaving }: AlertsSectionProps)
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">Not available yet. Alerts are delivered in the app only.</p>
               </div>
-              <Toggle
+              <Toggle aria-label="Email alerts (not available yet)"
                 checked={false}
                 onChange={() => {}}
                 disabled
@@ -87,7 +87,7 @@ export function AlertsSection({ prefs, onUpdate, isSaving }: AlertsSectionProps)
                   disabled={isSaving}
                   className="w-full max-w-xs"
                 />
-                <p className="text-xs text-muted-foreground/60 mt-1.5">Alert emails will be sent to this address.</p>
+                <p className="text-xs text-muted-foreground mt-1.5">Alert emails will be sent to this address.</p>
               </div>
             )}
           </div>
@@ -102,7 +102,7 @@ export function AlertsSection({ prefs, onUpdate, isSaving }: AlertsSectionProps)
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">Not available yet. Alerts are delivered in the app only.</p>
               </div>
-              <Toggle
+              <Toggle aria-label="Telegram alerts (not available yet)"
                 checked={false}
                 onChange={() => {}}
                 disabled
@@ -200,7 +200,7 @@ export function AlertsSection({ prefs, onUpdate, isSaving }: AlertsSectionProps)
             ].map((opt) => (
               <div key={opt.level} className={cn("rounded-lg p-2.5 border", opt.bg, prefs.alertSensitivity === opt.level ? "opacity-100" : "opacity-40")}>
                 <p className={cn("font-semibold", opt.color)}>{opt.label}</p>
-                <p className="text-muted-foreground/70 mt-0.5">{opt.desc}</p>
+                <p className="text-muted-foreground mt-0.5">{opt.desc}</p>
               </div>
             ))}
           </div>

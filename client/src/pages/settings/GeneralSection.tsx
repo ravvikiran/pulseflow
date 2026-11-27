@@ -15,10 +15,12 @@ interface GeneralSectionProps {
   isSaving: boolean;
 }
 
+// PulseFlow ships one designed theme today. Light and System stay listed but disabled
+// until a light palette exists, so the picker never promises something it cannot do.
 const THEME_OPTIONS = [
-  { value: "dark", label: "Dark", icon: Moon, desc: "Dark institutional theme" },
-  { value: "light", label: "Light", icon: Sun, desc: "Light clean theme" },
-  { value: "system", label: "System", icon: Monitor, desc: "Follow OS setting" },
+  { value: "dark", label: "Dark", icon: Moon, desc: "Dark institutional theme", available: true },
+  { value: "light", label: "Light", icon: Sun, desc: "Coming soon", available: false },
+  { value: "system", label: "System", icon: Monitor, desc: "Coming soon", available: false },
 ] as const;
 
 const LANDING_OPTIONS = [
@@ -74,14 +76,17 @@ export function GeneralSection({ prefs, onUpdate, isSaving }: GeneralSectionProp
         <div className="grid grid-cols-3 gap-3">
           {THEME_OPTIONS.map((opt) => {
             const Icon = opt.icon;
-            const isSelected = prefs.theme === opt.value;
+            // The app always renders dark, so Dark is the effective selection.
+            const isSelected = opt.value === "dark";
             return (
               <button
                 key={opt.value}
-                disabled={isSaving}
+                disabled={isSaving || !opt.available}
+                aria-pressed={isSelected}
                 onClick={() => onUpdate({ theme: opt.value })}
                 className={cn(
                   "flex flex-col items-center gap-2.5 p-4 rounded-xl border transition-all duration-150",
+                  !opt.available && "opacity-50 cursor-not-allowed",
                   isSelected
                     ? "border-indigo-500/60 bg-indigo-500/10 shadow-sm shadow-indigo-500/10"
                     : "border-border/50 bg-card/30 hover:border-border hover:bg-card/60"
@@ -95,7 +100,7 @@ export function GeneralSection({ prefs, onUpdate, isSaving }: GeneralSectionProp
                 </div>
                 <div className="text-center">
                   <p className={cn("text-sm font-medium", isSelected ? "text-foreground" : "text-muted-foreground")}>{opt.label}</p>
-                  <p className="text-xs text-muted-foreground/70 mt-0.5">{opt.desc}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{opt.desc}</p>
                 </div>
                 {isSelected && (
                   <div className="w-2 h-2 rounded-full bg-indigo-400" />

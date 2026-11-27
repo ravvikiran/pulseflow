@@ -126,7 +126,7 @@ All price data comes from **Yahoo Finance** (free, no API key needed):
 | US | ~15 min | 25 stocks (FAANG, financials, etc.) |
 | Indices | ~15 min | NIFTY50, SENSEX, S&P500, NASDAQ, etc. |
 
-Data is cached for 60 seconds to avoid rate limits. Historical charts show 1 year of daily candles.
+Quotes are cached for 60 seconds. After that they are still served instantly for up to 15 minutes while a fresh copy loads in the background (stale-while-revalidate), so pages never wait on Yahoo after a short idle. Daily history is cached for 30 minutes and pre-loaded at startup. Historical charts show 1 year of daily candles.
 
 ---
 

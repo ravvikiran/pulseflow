@@ -1,3 +1,4 @@
+import { MarketStatusPill } from "@/components/MarketStatus";
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
@@ -137,9 +138,7 @@ export default function USDashboard() {
           <div className="flex items-center gap-2 mb-1">
             <Flag className="w-3.5 h-3.5 text-primary" />
             <span className="text-2xs uppercase tracking-widest text-primary font-semibold">US Market</span>
-            <Badge variant="outline" className="text-3xs px-2 py-0.5 border-amber-500/40 text-amber-400">
-              Future Ready
-            </Badge>
+            <MarketStatusPill market="us" className="text-muted-foreground" />
           </div>
           <h1 className="text-xl font-bold text-foreground">US Market Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
@@ -220,9 +219,13 @@ export default function USDashboard() {
           <Badge variant="outline" className="text-2xs">US equities only</Badge>
         </div>
         {sectorLoading ? (
-          <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
-            {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-20 rounded" />)}
-          </div>
+          // Same structure and heights as the loaded card (8 sector cells + 140px chart), so nothing jumps.
+          <>
+            <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
+              {[...Array(8)].map((_, i) => <Skeleton key={i} className="min-h-[72px] rounded" />)}
+            </div>
+            <Skeleton className="h-[140px] w-full rounded" />
+          </>
         ) : (
           <>
             <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
@@ -235,13 +238,13 @@ export default function USDashboard() {
                 return (
                   <div key={s.sector} className="heatmap-cell p-2 min-h-[72px]"
                     style={{ background: bg, border: `1px solid ${change >= 0 ? "oklch(0.68 0.18 155 / 0.2)" : "oklch(0.58 0.22 25 / 0.2)"}` }}>
-                    <div className="text-2xs font-semibold text-foreground/80 uppercase leading-tight">
+                    <div className="text-2xs font-semibold text-foreground uppercase leading-tight">
                       {s.sector.replace("US ", "")}
                     </div>
-                    <div className={cn("text-sm font-bold tabular-nums mt-1", change >= 0 ? "text-bull" : "text-bear")}>
+                    <div className="text-sm font-bold tabular-nums mt-1 text-foreground">
                       {fmtPct(change)}
                     </div>
-                    <div className="text-3xs text-muted-foreground mt-0.5">Score: {Math.round(s.score)}</div>
+                    <div className="text-3xs text-foreground mt-0.5">Score: {Math.round(s.score)}</div>
                   </div>
                 );
               })}
@@ -273,7 +276,7 @@ export default function USDashboard() {
               <button key={t} onClick={() => setTab(t)}
                 aria-pressed={tab === t}
                 className={cn("px-2.5 py-1 rounded text-2xs font-medium transition-colors capitalize focus-ring min-h-[32px]",
-                  tab === t ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
+                  tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}>
                 {t === "gainers" ? "Top Gainers" : "Top Losers"}
               </button>
             ))}

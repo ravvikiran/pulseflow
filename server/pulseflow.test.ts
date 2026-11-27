@@ -541,6 +541,17 @@ describe("global router", () => {
     expect(result.us.topGainers.length).toBeGreaterThan(0);
   });
 
+  it("global.marketStatus reports a real state per market, or null when Yahoo is unreachable", async () => {
+    const caller = appRouter.createCaller(createPublicContext());
+    const status = await caller.global.marketStatus();
+    if (status === null) return; // source unreachable: UI shows "unavailable", never a guess
+    for (const market of ["india", "us", "crypto"] as const) {
+      expect(["open", "pre", "post", "closed"]).toContain(status[market].state);
+    }
+    // Crypto never closes for the weekend.
+    expect(status.crypto.state).toBe("open");
+  });
+
   it("global.pulse returns only real, typed signals", async () => {
     const caller = appRouter.createCaller(createPublicContext());
     const events = await caller.global.pulse();

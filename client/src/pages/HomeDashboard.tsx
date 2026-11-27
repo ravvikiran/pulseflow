@@ -1,3 +1,4 @@
+import { useMarketStatus, MARKET_LABEL, SESSION_TEXT, type MarketKey } from "@/hooks/useMarketStatus";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
@@ -44,17 +45,17 @@ function MarketDomainCard({
     >      {/* Header */}
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2.5">
-            <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center", accentClass)}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center shrink-0", accentClass)}>
               {icon}
             </div>
-            <div>
-              <div className="text-sm font-bold text-foreground">{title}</div>
-              <div className="text-2xs text-muted-foreground">{subtitle}</div>
+            <div className="min-w-0">
+              <div className="text-sm font-bold text-foreground truncate">{title}</div>
+              <div className="text-2xs text-muted-foreground truncate">{subtitle}</div>
             </div>
           </div>
           {badge && (
-            <span className={cn("text-3xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full", badgeClass)}>
+            <span className={cn("text-3xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full whitespace-nowrap shrink-0", badgeClass)}>
               {badge}
             </span>
           )}
@@ -176,6 +177,19 @@ function QuickNavTile({ href, icon, label, description, accentClass }: {
 
 // ─── Home Dashboard ───────────────────────────────────────────────────────────
 export default function HomeDashboard() {
+  const { status: marketStatus } = useMarketStatus();
+  // Badge text and style come from the market's real state, not a fixed label.
+  const statusBadge = (market: MarketKey, openClass: string) => {
+    const s = marketStatus?.[market];
+    return {
+      badge: `${MARKET_LABEL[market]} ${s ? SESSION_TEXT[s.state] : "status unavailable"}`,
+      badgeClass: s?.state === "open" ? openClass : "bg-muted text-muted-foreground",
+    };
+  };
+  const indiaBadge = statusBadge("india", "bg-[oklch(0.65_0.20_40/0.15)] text-[oklch(0.74_0.15_45)]");
+  const cryptoBadge = statusBadge("crypto", "bg-[oklch(0.60_0.22_290/0.15)] text-[oklch(0.74_0.15_290)]");
+  const usBadge = statusBadge("us", "bg-primary/10 text-primary");
+
   const { data: overview, isLoading, isError, refetch, isFetching } = trpc.global.overview.useQuery(undefined, {
     refetchInterval: 60000,
   });
@@ -203,7 +217,7 @@ export default function HomeDashboard() {
             Global Market Overview
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Real-time intelligence across Indian equities, crypto markets, and US equities
+            Market intelligence across Indian equities, crypto markets, and US equities
           </p>
         </div>
         <Button
@@ -231,8 +245,8 @@ export default function HomeDashboard() {
           topGainers={overview?.india.topGainers}
           topLosers={overview?.india.topLosers}
           isLoading={isLoading}
-          badge="NSE Live"
-          badgeClass="bg-[oklch(0.65_0.20_40/0.15)] text-[oklch(0.65_0.20_40)]"
+          badge={indiaBadge.badge}
+          badgeClass={indiaBadge.badgeClass}
         />
         <MarketDomainCard
           title="Crypto Market"
@@ -245,8 +259,8 @@ export default function HomeDashboard() {
           topGainers={overview?.crypto.topGainers}
           topLosers={overview?.crypto.topLosers}
           isLoading={isLoading}
-          badge="24/7 Live"
-          badgeClass="bg-[oklch(0.60_0.22_290/0.15)] text-[oklch(0.60_0.22_290)]"
+          badge={cryptoBadge.badge}
+          badgeClass={cryptoBadge.badgeClass}
         />
         <MarketDomainCard
           title="US Market"
@@ -259,8 +273,8 @@ export default function HomeDashboard() {
           topGainers={overview?.us.topGainers}
           topLosers={overview?.us.topLosers}
           isLoading={isLoading}
-          badge="US Live"
-          badgeClass="bg-primary/10 text-primary"
+          badge={usBadge.badge}
+          badgeClass={usBadge.badgeClass}
         />
       </div>
 
@@ -271,19 +285,19 @@ export default function HomeDashboard() {
           Quick Navigation
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2 stagger-children">
-          <QuickNavTile href="/india" icon={<BarChart3 className="w-4 h-4 text-[oklch(0.65_0.20_40)]" />}
+          <QuickNavTile href="/india" icon={<BarChart3 className="w-4 h-4 text-[oklch(0.74_0.15_45)]" />}
             label="India Dashboard" description="NSE overview & breadth"
             accentClass="bg-[oklch(0.65_0.20_40/0.12)]" />
-          <QuickNavTile href="/india/sectors" icon={<Activity className="w-4 h-4 text-[oklch(0.65_0.20_40)]" />}
+          <QuickNavTile href="/india/sectors" icon={<Activity className="w-4 h-4 text-[oklch(0.74_0.15_45)]" />}
             label="Sector Rotation" description="NSE sector rankings"
             accentClass="bg-[oklch(0.65_0.20_40/0.12)]" />
-          <QuickNavTile href="/india/scanner" icon={<Zap className="w-4 h-4 text-[oklch(0.65_0.20_40)]" />}
+          <QuickNavTile href="/india/scanner" icon={<Zap className="w-4 h-4 text-[oklch(0.74_0.15_45)]" />}
             label="NSE Scanner" description="EMA, breakout, volume"
             accentClass="bg-[oklch(0.65_0.20_40/0.12)]" />
-          <QuickNavTile href="/crypto" icon={<Bitcoin className="w-4 h-4 text-[oklch(0.60_0.22_290)]" />}
+          <QuickNavTile href="/crypto" icon={<Bitcoin className="w-4 h-4 text-[oklch(0.74_0.15_290)]" />}
             label="Crypto Dashboard" description="BTC dominance & Fear/Greed"
             accentClass="bg-[oklch(0.60_0.22_290/0.12)]" />
-          <QuickNavTile href="/crypto/scanner" icon={<Zap className="w-4 h-4 text-[oklch(0.60_0.22_290)]" />}
+          <QuickNavTile href="/crypto/scanner" icon={<Zap className="w-4 h-4 text-[oklch(0.74_0.15_290)]" />}
             label="Crypto Scanner" description="Volume spikes & breakouts"
             accentClass="bg-[oklch(0.60_0.22_290/0.12)]" />
           <QuickNavTile href="/us" icon={<Globe className="w-4 h-4 text-primary" />}
@@ -296,7 +310,7 @@ export default function HomeDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Flag className="w-4 h-4 text-[oklch(0.65_0.20_40)]" />
+            <Flag className="w-4 h-4 text-[oklch(0.74_0.15_45)]" />
             India Top Gainers
             <span className="text-2xs text-muted-foreground font-normal">(NSE only)</span>
           </h2>
@@ -315,7 +329,7 @@ export default function HomeDashboard() {
         </div>
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Bitcoin className="w-4 h-4 text-[oklch(0.60_0.22_290)]" />
+            <Bitcoin className="w-4 h-4 text-[oklch(0.74_0.15_290)]" />
             Crypto Top Gainers
             <span className="text-2xs text-muted-foreground font-normal">(Crypto only)</span>
           </h2>

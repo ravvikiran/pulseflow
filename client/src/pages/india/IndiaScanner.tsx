@@ -217,7 +217,7 @@ export default function IndiaScanner() {
         </div>
         <div className="flex items-center gap-2">
           <Badge className="badge-bull text-3xs">NSE Only</Badge>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => refetch()} disabled={isFetching}>
+          <Button variant="outline" size="sm" aria-label="Refresh data" className="h-7 text-xs gap-1" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={cn("w-3 h-3", isFetching && "animate-spin")} />
           </Button>
         </div>
@@ -262,7 +262,7 @@ export default function IndiaScanner() {
           <div className="space-y-1.5">
             <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Timeframe</Label>
             <Select value={timeframe} onValueChange={(v) => setTimeframe(v as Timeframe)}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger aria-label="Timeframe" className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -275,7 +275,7 @@ export default function IndiaScanner() {
           <div className="space-y-1.5">
             <Label className="text-2xs uppercase tracking-wider text-muted-foreground">NSE Sector</Label>
             <Select value={sector ?? "all"} onValueChange={v => setSector(v === "all" ? undefined : v)}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger aria-label="NSE sector" className="h-8 text-xs">
                 <SelectValue placeholder="All Sectors" />
               </SelectTrigger>
               <SelectContent>
@@ -291,7 +291,7 @@ export default function IndiaScanner() {
               Min Quality Score: <span className="text-foreground font-semibold">{minQualityScore}</span>
             </Label>
             <Select value={String(minQualityScore)} onValueChange={v => setMinQualityScore(Number(v))}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger aria-label="Minimum quality score" className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -357,7 +357,7 @@ export default function IndiaScanner() {
         ) : (
           <div className="pf-card">
             <StateView
-              icon={<Zap className="w-8 h-8 text-muted-foreground/40" />}
+              icon={<Zap className="w-8 h-8 text-muted-foreground" />}
               title="No NSE stocks match the current scan criteria"
               description="Try lowering the minimum quality score or adjusting the scan type."
             />

@@ -28,7 +28,7 @@ export function StateView({
 }: StateViewProps) {
   const defaultIcon = variant === "error"
     ? <AlertTriangle className="w-10 h-10 text-danger/60" />
-    : <Inbox className="w-10 h-10 text-muted-foreground/30" />;
+    : <Inbox className="w-10 h-10 text-muted-foreground" />;
 
   return (
     <div className={cn("flex flex-col items-center justify-center text-center px-4", PAD[size], className)} role={variant === "error" ? "alert" : undefined}>

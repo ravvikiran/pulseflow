@@ -115,7 +115,7 @@ export default function Notifications() {
   if (!isAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <Bell className="w-12 h-12 text-slate-600 mb-4" />
+        <Bell className="w-12 h-12 text-slate-400 mb-4" />
         <h2 className="text-xl font-semibold text-white mb-2">Sign In Required</h2>
         <p className="text-slate-400 mb-6 max-w-sm">
           Sign in to view your personalized market notifications and alerts.
@@ -201,7 +201,7 @@ export default function Notifications() {
       <div className="flex flex-wrap items-center gap-3 mb-4">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
           <Input
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -212,7 +212,7 @@ export default function Notifications() {
 
         {/* Domain filter */}
         <Select value={activeDomain} onValueChange={v => setActiveDomain(v as any)}>
-          <SelectTrigger className="h-8 text-xs w-36 bg-slate-800/50 border-slate-700 text-slate-300">
+          <SelectTrigger aria-label="Filter by market" className="h-8 text-xs w-36 bg-slate-800/50 border-slate-700 text-slate-300">
             <SelectValue placeholder="All Markets" />
           </SelectTrigger>
           <SelectContent className="bg-slate-900 border-slate-700">
@@ -266,13 +266,13 @@ export default function Notifications() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Bell className="w-10 h-10 text-slate-600 mb-3" />
+          <Bell className="w-10 h-10 text-slate-400 mb-3" />
           <p className="text-slate-400 font-medium">No notifications found</p>
-          <p className="text-slate-500 text-sm mt-1">
+          <p className="text-slate-400 text-sm mt-1">
             {search ? "Try adjusting your search or filters" : "You're all caught up!"}
           </p>
           {notifications.length === 0 && (
-            <p className="text-slate-500 text-xs mt-3 max-w-sm">
+            <p className="text-slate-400 text-xs mt-3 max-w-sm">
               Notifications appear here when one of your alerts triggers. Create alerts on the Alerts page.
             </p>
           )}
@@ -282,7 +282,7 @@ export default function Notifications() {
           {/* Unread section */}
           {filtered.filter(n => !n.isRead).length > 0 && (
             <>
-              <div className="text-2xs font-semibold uppercase tracking-widest text-slate-500 px-1 pt-2 pb-1">
+              <div className="text-2xs font-semibold uppercase tracking-widest text-slate-400 px-1 pt-2 pb-1">
                 Unread ({filtered.filter(n => !n.isRead).length})
               </div>
               {filtered.filter(n => !n.isRead).map(n => (
@@ -299,7 +299,7 @@ export default function Notifications() {
           {/* Read section */}
           {!showUnreadOnly && filtered.filter(n => n.isRead).length > 0 && (
             <>
-              <div className="text-2xs font-semibold uppercase tracking-widest text-slate-500 px-1 pt-4 pb-1">
+              <div className="text-2xs font-semibold uppercase tracking-widest text-slate-400 px-1 pt-4 pb-1">
                 Read ({filtered.filter(n => n.isRead).length})
               </div>
               {filtered.filter(n => n.isRead).map(n => (

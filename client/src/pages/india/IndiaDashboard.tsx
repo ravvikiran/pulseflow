@@ -214,7 +214,7 @@ export default function IndiaDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <Badge className="badge-bull text-3xs">NSE Only</Badge>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => refetch()} disabled={isFetching}>
+          <Button variant="outline" size="sm" aria-label="Refresh data" className="h-7 text-xs gap-1" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={cn("w-3 h-3", isFetching && "animate-spin")} />
           </Button>
         </div>

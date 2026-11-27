@@ -40,7 +40,7 @@ const NAV_ITEMS = [
     id: "alerts",
     label: "Alerts & Notifications",
     icon: Bell,
-    description: "Email, Telegram, in-app",
+    description: "In-app alerts and sensitivity",
     accent: "text-amber-400",
     bg: "bg-amber-500/10",
   },
@@ -64,7 +64,7 @@ const NAV_ITEMS = [
     id: "profile",
     label: "User Profile",
     icon: User,
-    description: "Account, avatar, subscription",
+    description: "Display name and local profile",
     accent: "text-rose-400",
     bg: "bg-rose-500/10",
   },
@@ -72,7 +72,7 @@ const NAV_ITEMS = [
     id: "security",
     label: "Security",
     icon: Shield,
-    description: "Password, sessions, 2FA",
+    description: "How your data is protected",
     accent: "text-orange-400",
     bg: "bg-orange-500/10",
   },
@@ -156,9 +156,9 @@ export default function Settings() {
   };
 
   return (
-    <div className="flex h-full min-h-screen bg-background">
+    <div className="flex h-full bg-background">
       {/* ── Left Navigation Panel ─────────────────────────────────────────── */}
-      <aside className="hidden lg:flex flex-col w-64 xl:w-72 border-r border-border/50 bg-card/30 backdrop-blur-sm sticky top-0 h-screen overflow-y-auto shrink-0">
+      <aside className="hidden lg:flex flex-col w-64 xl:w-72 border-r border-border/50 bg-card/30 backdrop-blur-sm sticky top-0 h-full overflow-y-auto shrink-0">
         {/* Header */}
         <div className="px-5 py-6 border-b border-border/50">
           <div className="flex items-center gap-3">
@@ -166,7 +166,7 @@ export default function Settings() {
               <Settings2 className="w-5 h-5 text-indigo-400" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold text-foreground">Settings</h1>
+              <p className="text-sm font-semibold text-foreground">Settings</p>
               <p className="text-xs text-muted-foreground">Configuration Center</p>
             </div>
           </div>
@@ -195,7 +195,7 @@ export default function Settings() {
                   <p className={cn("text-sm font-medium truncate", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
                     {item.label}
                   </p>
-                  <p className="text-xs text-muted-foreground/70 truncate">{item.description}</p>
+                  <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                 </div>
                 {isActive && <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
               </button>
@@ -244,16 +244,17 @@ export default function Settings() {
       </div>
 
       {/* ── Main Content ──────────────────────────────────────────────────── */}
-      <main
+      {/* The app shell already provides the page-level <main>; this is its scrollable region. */}
+      <div
         id="settings-scroll-container"
-        className="flex-1 overflow-y-auto lg:h-screen pt-16 lg:pt-0"
+        className="flex-1 overflow-y-auto h-full pt-16 lg:pt-0"
       >
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-12">
           {/* Page header */}
           <div className="space-y-1">
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
             <p className="text-sm text-muted-foreground">
-              Manage your PulseFlow configuration, preferences, and account settings.
+              Manage your PulseFlow configuration and preferences.
             </p>
           </div>
 
@@ -301,7 +302,7 @@ export default function Settings() {
           {/* Bottom padding */}
           <div className="h-16" />
         </div>
-      </main>
+      </div>
     </div>
   );
 }

@@ -32,7 +32,10 @@ interface PatternResult {
   stopLossZone: number;
   targetLevel: number;
   description: string;
+  /** Time of the candle the pattern was detected on (not the scan time). */
   detectedAt: number;
+  /** Real market of the symbol, taken from the server registry. */
+  market: "india" | "crypto" | "us";
 }
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -66,12 +69,9 @@ const MIN_CONFIDENCE_OPTIONS = [
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-function getMarketBadge(symbol: string) {
-  // Simple heuristic: crypto symbols are short and uppercase
-  const cryptoSymbols = ["BTC", "ETH", "BNB", "SOL", "ADA", "DOT", "MATIC", "AVAX", "LINK", "UNI", "AAVE", "CRV"];
-  const usSymbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "JPM", "JNJ", "XOM"];
-  if (cryptoSymbols.includes(symbol)) return { label: "Crypto", color: "text-amber-400 bg-amber-400/10 border-amber-400/20" };
-  if (usSymbols.includes(symbol)) return { label: "US", color: "text-blue-400 bg-blue-400/10 border-blue-400/20" };
+function getMarketBadge(market: PatternResult["market"]) {
+  if (market === "crypto") return { label: "Crypto", color: "text-amber-400 bg-amber-400/10 border-amber-400/20" };
+  if (market === "us") return { label: "US", color: "text-blue-400 bg-blue-400/10 border-blue-400/20" };
   return { label: "NSE", color: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" };
 }
 
@@ -93,13 +93,9 @@ function fmtPrice(n: number) {
   return n.toLocaleString("en-US", { maximumFractionDigits: 6 });
 }
 
-function timeAgo(ts: number) {
-  const diff = Date.now() - ts;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+/** "As of 27 Nov": the date of the candle the pattern was found on. */
+function asOfDate(ts: number) {
+  return `As of ${new Date(ts).toLocaleDateString(undefined, { day: "numeric", month: "short" })}`;
 }
 
 // ─── Pattern Card ──────────────────────────────────────────────────────────────
@@ -108,7 +104,7 @@ function PatternCard({ pattern }: { pattern: PatternResult }) {
   const [expanded, setExpanded] = useState(false);
   const severityConfig = getSeverityConfig(pattern.severity);
   const confidenceConfig = getConfidenceConfig(pattern.confidenceScore);
-  const marketBadge = getMarketBadge(pattern.symbol);
+  const marketBadge = getMarketBadge(pattern.market);
   const SeverityIcon = severityConfig.icon;
 
   return (
@@ -139,7 +135,7 @@ function PatternCard({ pattern }: { pattern: PatternResult }) {
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-bold", confidenceConfig.bg, confidenceConfig.color)}>
               <span>{pattern.confidenceScore.toFixed(0)}%</span>
-              <span className="opacity-70">{confidenceConfig.label}</span>
+              <span>{confidenceConfig.label}</span>
             </div>
             <div className="flex items-center gap-1">
               {pattern.volumeConfirmed && (
@@ -152,7 +148,7 @@ function PatternCard({ pattern }: { pattern: PatternResult }) {
                 <span className="text-3xs px-1.5 py-0.5 rounded bg-bear/10 text-bear border border-bear/20 font-medium">False BO</span>
               )}
             </div>
-            <div className="text-3xs text-muted-foreground">{timeAgo(pattern.detectedAt)}</div>
+            <div className="text-3xs text-muted-foreground">{asOfDate(pattern.detectedAt)}</div>
           </div>
         </div>
 
@@ -165,8 +161,14 @@ function PatternCard({ pattern }: { pattern: PatternResult }) {
             />
           </div>
           <span className="text-3xs text-muted-foreground shrink-0">Strength: {pattern.patternStrength.toFixed(0)}</span>
-          <button className="text-muted-foreground hover:text-foreground transition-colors">
-            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          {/* The whole card is clickable for mouse users; this button is the keyboard and screen-reader control. */}
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-label={`${expanded ? "Hide" : "Show"} details for ${pattern.symbol} ${pattern.patternName}`}
+            className="p-1.5 -m-1.5 rounded text-muted-foreground hover:text-foreground transition-colors focus-ring"
+          >
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" aria-hidden /> : <ChevronDown className="w-3.5 h-3.5" aria-hidden />}
           </button>
         </div>
       </div>
@@ -314,7 +316,7 @@ export default function PatternScanner() {
           <div className="space-y-1.5">
             <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Market</Label>
             <Select value={market} onValueChange={(v) => setMarket(v as any)}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger aria-label="Market" className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -328,7 +330,7 @@ export default function PatternScanner() {
           <div className="space-y-1.5">
             <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Timeframe</Label>
             <Select value={timeframe} onValueChange={setTimeframe}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger aria-label="Timeframe" className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -342,7 +344,7 @@ export default function PatternScanner() {
           <div className="space-y-1.5">
             <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Direction</Label>
             <Select value={severityFilter} onValueChange={setSeverityFilter}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger aria-label="Direction" className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -356,7 +358,7 @@ export default function PatternScanner() {
           <div className="space-y-1.5">
             <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Min Confidence</Label>
             <Select value={String(minConfidence)} onValueChange={v => setMinConfidence(Number(v))}>
-              <SelectTrigger className="h-8 text-xs">
+              <SelectTrigger aria-label="Minimum confidence" className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -369,22 +371,22 @@ export default function PatternScanner() {
 
           <div className="space-y-1.5">
             <Label className="text-2xs uppercase tracking-wider text-muted-foreground">Options</Label>
-            <div className="flex flex-col gap-1.5">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex flex-col gap-1">
+              <label className="flex items-center gap-2 cursor-pointer min-h-6">
                 <input
                   type="checkbox"
                   checked={requireVolumeConfirmation}
                   onChange={e => setRequireVolumeConfirmation(e.target.checked)}
-                  className="w-3 h-3 accent-primary"
+                  className="size-4 accent-primary"
                 />
                 <span className="text-2xs text-muted-foreground">Volume Confirmed Only</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2 cursor-pointer min-h-6">
                 <input
                   type="checkbox"
                   checked={filterFalseBreakouts}
                   onChange={e => setFilterFalseBreakouts(e.target.checked)}
-                  className="w-3 h-3 accent-primary"
+                  className="size-4 accent-primary"
                 />
                 <span className="text-2xs text-muted-foreground">Filter False Breakouts</span>
               </label>
@@ -436,7 +438,7 @@ export default function PatternScanner() {
           <div className="pf-card">
             <StateView
               size="lg"
-              icon={<ScanSearch className="w-10 h-10 text-muted-foreground/30" />}
+              icon={<ScanSearch className="w-10 h-10 text-muted-foreground" />}
               title="No patterns detected"
               description="Try lowering the minimum confidence threshold or selecting a different market."
               action={

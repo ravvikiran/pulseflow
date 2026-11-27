@@ -827,6 +827,9 @@ export function detectPatternsOnCandles(
     }
   }
 
+  // A pattern is "as of" the last candle it was detected on, not the moment of the scan.
+  const asOf = candles.length ? candles[candles.length - 1].timestamp : Date.now();
+
   // Deduplicate and limit
   const seen = new Set<string>();
   return results
@@ -837,5 +840,6 @@ export function detectPatternsOnCandles(
       seen.add(key);
       return true;
     })
-    .slice(0, maxResultsPerAsset);
+    .slice(0, maxResultsPerAsset)
+    .map(r => ({ ...r, detectedAt: asOf }));
 }

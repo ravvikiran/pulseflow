@@ -115,7 +115,7 @@ export default function IndiaSectors() {
         </div>
         <div className="flex items-center gap-2">
           <Badge className="badge-bull text-3xs">NSE Only</Badge>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => refetch()} disabled={isFetching}>
+          <Button variant="outline" size="sm" aria-label="Refresh data" className="h-7 text-xs gap-1" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={cn("w-3 h-3", isFetching && "animate-spin")} />
           </Button>
         </div>
@@ -190,7 +190,7 @@ export default function IndiaSectors() {
         {/* Sector Rankings List */}
         <div className="pf-card overflow-hidden">
           <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-            <Flag className="w-4 h-4 text-[oklch(0.65_0.20_40)]" />
+            <Flag className="w-4 h-4 text-[oklch(0.74_0.15_45)]" />
             <span className="text-sm font-semibold text-foreground">Sector Rankings</span>
             <Badge variant="outline" className="text-3xs ml-auto">NSE Only</Badge>
           </div>

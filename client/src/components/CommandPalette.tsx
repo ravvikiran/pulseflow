@@ -106,7 +106,7 @@ export function CommandPalette() {
       <CommandList>
         <CommandEmpty>
           <div className="flex flex-col items-center gap-2 py-4">
-            <Search className="w-8 h-8 text-muted-foreground/50" />
+            <Search className="w-8 h-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">No results found</p>
             <p className="text-xs text-muted-foreground">Try searching for a stock symbol, page name, or feature</p>
           </div>

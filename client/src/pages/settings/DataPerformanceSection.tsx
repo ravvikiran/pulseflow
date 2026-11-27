@@ -107,7 +107,7 @@ export function DataPerformanceSection({ prefs, onUpdate, isSaving }: DataPerfSe
             />
           </SettingsRow>
         </SettingsCard>
-        <p className="text-xs text-muted-foreground/60 mt-2 px-1">
+        <p className="text-xs text-muted-foreground mt-2 px-1">
           Older data beyond this window will be automatically pruned during the nightly cleanup job.
         </p>
       </div>

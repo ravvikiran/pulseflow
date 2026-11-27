@@ -121,7 +121,12 @@ export default function Journal() {
         </div>
       </div>
 
-      {/* Stats Summary */}
+      {/* Stats Summary (placeholder keeps the same height so the list below does not jump) */}
+      {!stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3" aria-hidden>
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-[68px] rounded-lg" />)}
+        </div>
+      )}
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
           {[
@@ -132,7 +137,7 @@ export default function Journal() {
             { label: "Avg Win", value: `+${fmt(stats.avgWin)}%`, color: "text-bull" },
             { label: "Avg Loss", value: `${fmt(stats.avgLoss)}%`, color: "text-bear" },
           ].map(s => (
-            <div key={s.label} className="pf-card p-3 text-center">
+            <div key={s.label} className="pf-card p-3 text-center min-h-[68px]">
               <div className="text-2xs text-muted-foreground uppercase tracking-wider">{s.label}</div>
               <div className={cn("text-lg font-bold tabular-nums mt-0.5", s.color)}>{s.value}</div>
             </div>
@@ -319,7 +324,7 @@ function CloseTradeButton({ trade }: { trade: any }) {
       <button
         onClick={() => closeMutation.mutate({ id: trade.id, exitPrice: parseFloat(exitPrice) })}
         disabled={closeMutation.isPending || !exitPrice}
-        className="text-3xs px-2 py-1 rounded bg-primary text-white font-medium hover:bg-primary/90 disabled:opacity-50"
+        className="text-3xs px-2 py-1 rounded bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50"
       >
         {closeMutation.isPending ? "..." : "Confirm"}
       </button>

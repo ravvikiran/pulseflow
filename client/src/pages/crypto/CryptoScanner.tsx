@@ -1,3 +1,4 @@
+import { MarketStatusPill } from "@/components/MarketStatus";
 import { trpc } from "@/lib/trpc";
 import { Link } from "wouter";
 import { useState, useMemo } from "react";
@@ -211,8 +212,7 @@ export default function CryptoScanner() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="w-2 h-2 rounded-full bg-bull pulse-live" />
-            <span className="text-2xs uppercase tracking-widest text-bull font-semibold">Crypto Market</span>
+            <MarketStatusPill market="crypto" className="text-muted-foreground" />
           </div>
           <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
             <Search className="w-5 h-5 text-primary" />
@@ -256,7 +256,7 @@ export default function CryptoScanner() {
                       {active ? <Check className="w-3.5 h-3.5 shrink-0" /> : <Icon className="w-3.5 h-3.5 shrink-0" />}
                       <span className="font-medium">{label}</span>
                     </div>
-                    {active && <div className="text-3xs mt-1 text-primary/70">{desc}</div>}
+                    {active && <div className="text-3xs mt-1 text-primary">{desc}</div>}
                   </button>
                   );
                 })}
@@ -288,7 +288,7 @@ export default function CryptoScanner() {
                   <button key={tf.value} onClick={() => setTimeframe(tf.value)}
                     aria-pressed={timeframe === tf.value}
                     className={cn("px-2.5 py-1 rounded text-xs font-medium transition-colors focus-ring min-h-[32px]",
-                      timeframe === tf.value ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
+                      timeframe === tf.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}>
                     {tf.label}
                   </button>
                 ))}
@@ -306,7 +306,7 @@ export default function CryptoScanner() {
                     aria-pressed={minQualityScore === v}
                     aria-label={`Minimum quality score ${v}`}
                     className={cn("px-2 py-0.5 rounded text-2xs font-medium transition-colors focus-ring",
-                      minQualityScore === v ? "bg-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
+                      minQualityScore === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground")}>
                     {v}+
                   </button>
                 ))}
@@ -409,7 +409,7 @@ export default function CryptoScanner() {
             />
           ) : !results || results.length === 0 ? (
             <StateView
-              icon={<Search className="w-10 h-10 text-muted-foreground/30" />}
+              icon={<Search className="w-10 h-10 text-muted-foreground" />}
               title="No crypto assets match this scan"
               description="Try lowering the minimum quality score or switching scan strategy."
               size="lg"

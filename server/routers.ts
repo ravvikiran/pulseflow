@@ -24,6 +24,7 @@ import {
   getMarketSentiment, getHighLowCounts, getIndiaSentimentHistory, getSectorRotationHistory, getSectorDailyHistory,
   sentimentFromChanges, stateFromScore,
 } from "./marketAnalytics";
+import { getMarketStatus } from "./yahooFinance";
 import {
   getFearGreedNow, getFearGreedHistory, getCryptoGlobal, getTopExchanges, getFiiDiiActivity, fearGreedLabel,
 } from "./externalData";
@@ -85,6 +86,9 @@ function marketOf(symbol: string): Market {
 function unavailable(what: string): never {
   throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: `Live data for ${what} is currently unavailable. Try again shortly.` });
 }
+
+/** Attach each result's real market (from the registries) so the UI never guesses it from the symbol. */
+const withMarket = <T extends { symbol: string }>(rows: T[]) => rows.map(r => ({ ...r, market: marketOf(r.symbol) }));
 
 const topMovers = <T extends { changePercent: number }>(list: T[], n: number) => ({
   gainers: [...list].sort((a, b) => b.changePercent - a.changePercent).slice(0, n),
@@ -174,6 +178,9 @@ const globalRouter = router({
     return getAlertHistory(ctx.user.id, 5);
   }),
 
+  // Real open/closed state of each market (Yahoo exchange data, holiday-aware). Null if unreachable.
+  marketStatus: publicProcedure.query(async () => getMarketStatus()),
+
   // Live market signals for the Market Pulse panel: big movers plus real
   // volume-spike and 52-week-high scanner hits. Cached for a minute.
   pulse: publicProcedure.query(async () => {
@@ -225,13 +232,13 @@ const globalRouter = router({
       if (input.market === "india" || input.market === "all") assets.push(...NSE_REGISTRY);
       if (input.market === "crypto" || input.market === "all") assets.push(...CRYPTO_REGISTRY);
       if (input.market === "us" || input.market === "all") assets.push(...US_REGISTRY);
-      return runRealPatternScanner(assets, {
+      return withMarket(await runRealPatternScanner(assets, {
         timeframes: input.timeframes,
         minConfidence: input.minConfidence,
         requireVolumeConfirmation: input.requireVolumeConfirmation,
         filterFalseBreakouts: input.filterFalseBreakouts,
         maxResultsPerAsset: 1,
-      });
+      }));
     }),
 
   // Data validation endpoint, registry integrity audit
@@ -344,13 +351,13 @@ const indiaRouter = router({
       const assets = input.sector
         ? NSE_REGISTRY.filter(a => a.sector.toLowerCase() === input.sector!.toLowerCase())
         : NSE_REGISTRY;
-      return runRealPatternScanner(assets, {
+      return withMarket(await runRealPatternScanner(assets, {
         timeframes: input.timeframes,
         minConfidence: input.minConfidence,
         requireVolumeConfirmation: input.requireVolumeConfirmation,
         filterFalseBreakouts: input.filterFalseBreakouts,
         maxResultsPerAsset: 2,
-      });
+      }));
     }),
 
   // NSE stocks list
@@ -503,13 +510,13 @@ const cryptoRouter = router({
   patterns: publicProcedure
     .input(z.object(patternInput))
     .query(async ({ input }) => {
-      return runRealPatternScanner(CRYPTO_REGISTRY, {
+      return withMarket(await runRealPatternScanner(CRYPTO_REGISTRY, {
         timeframes: input.timeframes,
         minConfidence: input.minConfidence,
         requireVolumeConfirmation: input.requireVolumeConfirmation,
         filterFalseBreakouts: input.filterFalseBreakouts,
         maxResultsPerAsset: 2,
-      });
+      }));
     }),
 
   // Crypto assets list

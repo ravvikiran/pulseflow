@@ -135,7 +135,7 @@ function NotificationCard({
                 {notification.symbol}
               </span>
             )}
-            <span className="text-2xs text-slate-500">
+            <span className="text-2xs text-slate-400">
               {timeAgo(notification.createdAt)}
             </span>
           </div>
@@ -214,7 +214,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
       {/* Notification list */}
       <div className="max-h-80 overflow-y-auto">
         {recent.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-slate-500">
+          <div className="flex flex-col items-center justify-center py-10 text-slate-400">
             <Bell className="w-8 h-8 mb-2 opacity-30" />
             <p className="text-sm">No new notifications</p>
           </div>

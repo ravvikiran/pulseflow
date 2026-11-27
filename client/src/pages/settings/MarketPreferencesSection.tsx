@@ -91,7 +91,7 @@ export function MarketPreferencesSection({ prefs, onUpdate, isSaving }: MarketPr
                 </div>
                 <div>
                   <p className={cn("text-sm font-medium", isEnabled ? "text-foreground" : "text-muted-foreground")}>{mod.label}</p>
-                  <p className="text-xs text-muted-foreground/70 mt-0.5">{mod.desc}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{mod.desc}</p>
                 </div>
               </button>
             );
@@ -149,7 +149,7 @@ export function MarketPreferencesSection({ prefs, onUpdate, isSaving }: MarketPr
             />
           </SettingsRow>
         </SettingsCard>
-        <p className="text-xs text-muted-foreground/60 mt-2 px-1">
+        <p className="text-xs text-muted-foreground mt-2 px-1">
           Lower values provide more up-to-date data but may increase server load. Minimum: 10 seconds.
         </p>
       </div>

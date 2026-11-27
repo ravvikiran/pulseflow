@@ -52,15 +52,15 @@ function parseTrustProxy(value: string | undefined): boolean | number | string |
  * inline scripts and uses websockets for HMR.
  * - style-src 'unsafe-inline': Recharts, lightweight-charts and Framer Motion
  *   set inline styles.
- * - Google Fonts are loaded from index.html.
+ * - Fonts are self-hosted (served from this origin).
  */
 const productionCsp = {
   useDefaults: true,
   directives: {
     "default-src": ["'self'"],
     "script-src": ["'self'"],
-    "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-    "font-src": ["'self'", "data:", "https://fonts.gstatic.com"],
+    "style-src": ["'self'", "'unsafe-inline'"],
+    "font-src": ["'self'", "data:"],
     "img-src": ["'self'", "data:", "blob:", "https:"],
     "connect-src": ["'self'"],
     "worker-src": ["'self'"],

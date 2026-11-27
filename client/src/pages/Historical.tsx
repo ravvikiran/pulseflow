@@ -109,7 +109,7 @@ export default function Historical() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground">Market Sentiment History</h3>
             <Select value={sentimentDays} onValueChange={setSentimentDays}>
-              <SelectTrigger className="h-7 text-xs w-24 bg-muted border-border">
+              <SelectTrigger aria-label="Sentiment history range" className="h-7 text-xs w-24 bg-muted border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -236,7 +236,7 @@ export default function Historical() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground">Performance Tracking</h3>
             <Select value={perfDays} onValueChange={setPerfDays}>
-              <SelectTrigger className="h-7 text-xs w-24 bg-muted border-border">
+              <SelectTrigger aria-label="Performance range" className="h-7 text-xs w-24 bg-muted border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -304,7 +304,7 @@ export default function Historical() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-foreground">Historical Scanner Results</h3>
             <Select value={scanType} onValueChange={setScanType}>
-              <SelectTrigger className="h-7 text-xs w-48 bg-muted border-border">
+              <SelectTrigger aria-label="Scan type" className="h-7 text-xs w-48 bg-muted border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

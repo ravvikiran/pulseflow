@@ -236,7 +236,7 @@ function CreateAlertForm({ onClose }: { onClose: () => void }) {
         <div className="space-y-1.5">
           <label className="text-2xs uppercase tracking-wider text-muted-foreground font-semibold">Timeframe</label>
           <Select value={timeframe} onValueChange={setTimeframe}>
-            <SelectTrigger className="h-8 text-xs bg-muted border-border">
+            <SelectTrigger aria-label="Timeframe" className="h-8 text-xs bg-muted border-border">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -262,7 +262,7 @@ function CreateAlertForm({ onClose }: { onClose: () => void }) {
         <div className="space-y-1.5">
           <label className="text-2xs uppercase tracking-wider text-muted-foreground font-semibold">Sector</label>
           <Select value={sector} onValueChange={setSector}>
-            <SelectTrigger className="h-8 text-xs bg-muted border-border">
+            <SelectTrigger aria-label="Sector" className="h-8 text-xs bg-muted border-border">
               <SelectValue placeholder="Select sector..." />
             </SelectTrigger>
             <SelectContent>
@@ -307,7 +307,7 @@ export default function AlertsPage() {
       <div className="p-4 lg:p-6 min-h-[60vh] flex items-center justify-center">
         <StateView
           size="lg"
-          icon={<Bell className="w-16 h-16 text-muted-foreground/20" />}
+          icon={<Bell className="w-16 h-16 text-muted-foreground" />}
           title="Sign in to manage alerts"
           description="Set up smart alerts for EMA crossovers, volume spikes, breakouts, and sector momentum shifts."
           action={<a href={getLoginUrl()}><Button className="gap-2">Sign In to PulseFlow</Button></a>}
@@ -369,7 +369,7 @@ export default function AlertsPage() {
             [...Array(3)].map((_, i) => <Skeleton key={i} className="h-24 rounded-lg" />)
           ) : activeAlerts.length === 0 ? (
             <StateView
-              icon={<BellOff className="w-10 h-10 text-muted-foreground/30" />}
+              icon={<BellOff className="w-10 h-10 text-muted-foreground" />}
               title="No active alerts"
               description="Create an alert to get notified of market events."
             />
@@ -381,7 +381,7 @@ export default function AlertsPage() {
         <TabsContent value="paused" className="mt-4 space-y-3">
           {pausedAlerts.length === 0 ? (
             <StateView
-              icon={<Bell className="w-10 h-10 text-muted-foreground/30" />}
+              icon={<Bell className="w-10 h-10 text-muted-foreground" />}
               title="No paused alerts"
             />
           ) : (
@@ -394,7 +394,7 @@ export default function AlertsPage() {
             <Skeleton className="h-48 rounded" />
           ) : !history || history.length === 0 ? (
             <StateView
-              icon={<Clock className="w-10 h-10 text-muted-foreground/30" />}
+              icon={<Clock className="w-10 h-10 text-muted-foreground" />}
               title="No alert history yet"
               description="Triggered alerts will appear here."
             />

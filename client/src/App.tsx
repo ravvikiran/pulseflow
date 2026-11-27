@@ -1,14 +1,13 @@
-import { lazy, Suspense, useState, useEffect } from "react";
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch, useLocation } from "wouter";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, MotionConfig } from "framer-motion";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import PulseFlowLayout from "./components/PulseFlowLayout";
 import { PageTransition } from "./components/PageTransition";
-import { SplashScreen } from "./components/SplashScreen";
 import { KeyboardShortcuts } from "./components/KeyboardShortcuts";
 import { OfflineBanner } from "./components/OfflineBanner";
 
@@ -138,33 +137,26 @@ function Router() {
   );
 }
 
-// ─── App with Splash Screen ──────────────────────────────────────────────────
+// ─── App ─────────────────────────────────────────────────────────────────────
+// No splash screen: the app renders immediately. (The old 2.2s splash blocked every
+// load and pushed Largest Contentful Paint to about 3.3s.)
 function App() {
-  const [showSplash, setShowSplash] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 2200);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <SplashScreen isVisible={showSplash} />
-          {!showSplash && (
-            <>
-              <Toaster />
-              <OfflineBanner />
-              <Suspense fallback={null}>
-                <AchievementOverlay />
-                <CommandPalette />
-              </Suspense>
-              <KeyboardShortcuts />
-              <Router />
-            </>
-          )}
-        </TooltipProvider>
+        {/* "user" makes every framer-motion animation honour prefers-reduced-motion */}
+        <MotionConfig reducedMotion="user">
+          <TooltipProvider>
+            <Toaster />
+            <OfflineBanner />
+            <Suspense fallback={null}>
+              <AchievementOverlay />
+              <CommandPalette />
+            </Suspense>
+            <KeyboardShortcuts />
+            <Router />
+          </TooltipProvider>
+        </MotionConfig>
       </ThemeProvider>
     </ErrorBoundary>
   );
